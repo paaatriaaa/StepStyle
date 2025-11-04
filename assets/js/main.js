@@ -37,14 +37,13 @@ class StepStyle {
             this.setupEventListeners();
             this.loadInitialData();
             this.setupIntersectionObserver();
-            this.initializeServiceWorker();
-            this.setupErrorHandling();
+            this.setupImageErrorHandling(); // <- TAMBAHAN BARU
             
             // Safety timeout to ensure loading screen hides
             setTimeout(() => {
                 this.hideLoading();
                 console.log('✅ StepStyle application ready!');
-            }, 2000);
+            }, 1500);
             
         } catch (error) {
             console.error('❌ Application setup failed:', error);
@@ -74,8 +73,8 @@ class StepStyle {
 
     // ===== LOADING MANAGEMENT =====
     showLoading() {
-        // Remove existing loading screens
-        this.hideLoading();
+        const existingLoading = document.getElementById('global-loading');
+        if (existingLoading) return;
         
         const loading = document.createElement('div');
         loading.className = 'loading';
@@ -87,11 +86,8 @@ class StepStyle {
             </div>
         `;
         
-        // Add to body
         document.body.appendChild(loading);
         document.body.classList.add('loading');
-        
-        console.log('🔄 Loading screen shown');
     }
 
     hideLoading() {
@@ -99,14 +95,10 @@ class StepStyle {
         if (loading) {
             loading.classList.add('hidden');
             setTimeout(() => {
-                if (loading.parentNode) {
-                    loading.remove();
-                }
+                loading.remove();
             }, 500);
         }
         document.body.classList.remove('loading');
-        
-        console.log('✅ Loading screen hidden');
     }
 
     // ===== EVENT LISTENERS =====
@@ -131,18 +123,17 @@ class StepStyle {
         
         // Product interactions
         this.setupProductInteractions();
-        
-        // Keyboard shortcuts
-        this.setupKeyboardShortcuts();
     }
 
     setupSearch() {
-        const searchInput = document.querySelector('.search-bar input');
+        const searchInput = document.querySelector('#search-input');
         const searchForm = document.querySelector('.search-form');
+        const searchSuggestions = document.querySelector('#search-suggestions');
         
         if (searchInput) {
-            searchInput.addEventListener('input', this.debounce(this.handleSearch.bind(this), 300));
             searchInput.addEventListener('focus', this.handleSearchFocus.bind(this));
+            searchInput.addEventListener('blur', this.handleSearchBlur.bind(this));
+            searchInput.addEventListener('input', this.debounce(this.handleSearchInput.bind(this), 300));
         }
         
         if (searchForm) {
@@ -181,9 +172,6 @@ class StepStyle {
         
         // Mobile accordions
         this.setupMobileAccordions();
-        
-        // Dropdown menus
-        this.setupDropdowns();
     }
 
     setupForms() {
@@ -192,152 +180,139 @@ class StepStyle {
         newsletterForms.forEach(form => {
             form.addEventListener('submit', this.handleNewsletterSubmit.bind(this));
         });
-        
-        // Contact forms
-        const contactForms = document.querySelectorAll('form[data-contact]');
-        contactForms.forEach(form => {
-            form.addEventListener('submit', this.handleContactSubmit.bind(this));
-        });
     }
 
     setupProductInteractions() {
-        // Product card interactions are handled in handleGlobalClicks
-        // Additional product-specific setup can go here
+        // Product interactions are handled in handleGlobalClicks
     }
 
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Escape key
-            if (e.key === 'Escape') {
-                this.handleEscapeKey();
-            }
+    // ===== IMAGE ERROR HANDLING =====
+    setupImageErrorHandling() {
+        const images = document.querySelectorAll('.product-image img');
+        images.forEach(img => {
+            img.addEventListener('error', function() {
+                console.log('Image failed to load:', this.src);
+                this.style.display = 'none';
+                const placeholder = this.nextElementSibling;
+                if (placeholder && placeholder.classList.contains('product-image-placeholder')) {
+                    placeholder.style.display = 'flex';
+                }
+            });
             
-            // Search focus (Ctrl+K or Cmd+K)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                this.focusSearch();
-            }
-            
-            // Cart toggle (Ctrl+C or Cmd+C)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-                e.preventDefault();
-                this.toggleCartPreview();
+            // Also check if src is empty
+            if (!img.src || img.src === '' || img.src === window.location.href) {
+                img.style.display = 'none';
+                const placeholder = img.nextElementSibling;
+                if (placeholder && placeholder.classList.contains('product-image-placeholder')) {
+                    placeholder.style.display = 'flex';
+                }
             }
         });
     }
 
     // ===== SEARCH FUNCTIONALITY =====
-    handleSearch(event) {
-        const searchTerm = event.target.value.trim().toLowerCase();
-        
-        if (searchTerm.length > 2) {
-            this.showSearchSuggestions(searchTerm);
-        } else {
-            this.hideSearchSuggestions();
-        }
-    }
-
     handleSearchFocus(event) {
         const searchBar = event.target.closest('.search-bar');
         if (searchBar) {
             searchBar.classList.add('focused');
+            this.loadSearchSuggestions();
+        }
+    }
+
+    handleSearchBlur(event) {
+        const searchBar = event.target.closest('.search-bar');
+        if (searchBar) {
+            // Delay to allow click on suggestions
+            setTimeout(() => {
+                searchBar.classList.remove('focused');
+            }, 200);
+        }
+    }
+
+    handleSearchInput(event) {
+        const searchTerm = event.target.value.trim();
+        if (searchTerm.length > 2) {
+            this.loadSearchSuggestions(searchTerm);
+        } else {
+            this.loadPopularSearches();
         }
     }
 
     handleSearchSubmit(event) {
         event.preventDefault();
         const formData = new FormData(event.target);
-        const searchTerm = formData.get('q')?.trim();
+        const searchTerm = formData.get('search')?.trim();
         
         if (searchTerm) {
-            window.location.href = `/products/search.php?q=${encodeURIComponent(searchTerm)}`;
+            window.location.href = `products/categories.php?search=${encodeURIComponent(searchTerm)}`;
         }
     }
 
-    showSearchSuggestions(searchTerm) {
-        this.hideSearchSuggestions();
-        
-        const searchBar = document.querySelector('.search-bar');
-        if (!searchBar) return;
-        
-        const suggestions = document.createElement('div');
-        suggestions.className = 'search-suggestions';
-        
-        // Filter products based on search term
-        const filteredProducts = this.products.filter(product => 
-            product.name.toLowerCase().includes(searchTerm) ||
-            product.brand.toLowerCase().includes(searchTerm) ||
-            product.category.toLowerCase().includes(searchTerm)
-        ).slice(0, 5);
-        
-        if (filteredProducts.length > 0) {
-            suggestions.innerHTML = `
-                <div class="suggestions-header">
-                    <h4>Products</h4>
-                </div>
-                ${filteredProducts.map(product => `
-                    <div class="suggestion-item" data-product-id="${product.id}">
-                        <img src="${product.image}" alt="${product.name}" 
-                             onerror="this.src='/assets/images/products/placeholder.jpg'">
-                        <div class="suggestion-info">
-                            <div class="suggestion-name">${product.name}</div>
-                            <div class="suggestion-brand">${product.brand}</div>
-                            <div class="suggestion-price">${this.formatPrice(product.price)}</div>
-                        </div>
+    async loadSearchSuggestions(searchTerm = '') {
+        const suggestionsList = document.querySelector('#suggestions-list');
+        if (!suggestionsList) return;
+
+        try {
+            let url = 'API/search/suggestions.php';
+            if (searchTerm) {
+                url += `?q=${encodeURIComponent(searchTerm)}`;
+            }
+
+            const response = await fetch(url);
+            const suggestions = await response.json();
+
+            suggestionsList.innerHTML = suggestions.map(suggestion => `
+                <div class="suggestion-item" data-product-id="${suggestion.id}">
+                    <div class="suggestion-info">
+                        <div class="suggestion-name">${suggestion.name}</div>
+                        <div class="suggestion-brand">${suggestion.brand}</div>
+                        <div class="suggestion-price">$${suggestion.price}</div>
                     </div>
-                `).join('')}
-                <div class="suggestions-footer">
-                    <a href="/products/search.php?q=${encodeURIComponent(searchTerm)}" class="view-all-results">
-                        View all results for "${searchTerm}"
-                    </a>
                 </div>
-            `;
-            
-            searchBar.appendChild(suggestions);
-            
-            // Add click events
-            suggestions.querySelectorAll('.suggestion-item').forEach(item => {
+            `).join('');
+
+            // Add click events to suggestions
+            suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const productId = item.dataset.productId;
-                    this.viewProduct(productId);
-                    this.hideSearchSuggestions();
+                    window.location.href = `products/detail.php?id=${productId}`;
                 });
             });
-            
-            // Close suggestions when clicking outside
-            setTimeout(() => {
-                document.addEventListener('click', this.handleClickOutsideSuggestions.bind(this));
-            }, 100);
+
+        } catch (error) {
+            console.error('Error loading search suggestions:', error);
+            this.loadPopularSearches();
         }
     }
 
-    handleClickOutsideSuggestions(event) {
-        const searchBar = document.querySelector('.search-bar');
-        const suggestions = document.querySelector('.search-suggestions');
-        
-        if (suggestions && searchBar && !searchBar.contains(event.target)) {
-            this.hideSearchSuggestions();
-        }
-    }
+    loadPopularSearches() {
+        const suggestionsList = document.querySelector('#suggestions-list');
+        if (!suggestionsList) return;
 
-    hideSearchSuggestions() {
-        const suggestions = document.querySelector('.search-suggestions');
-        if (suggestions) {
-            suggestions.remove();
-        }
-        document.removeEventListener('click', this.handleClickOutsideSuggestions);
-        
-        const searchBar = document.querySelector('.search-bar');
-        if (searchBar) {
-            searchBar.classList.remove('focused');
-        }
-    }
+        const popularSearches = [
+            { id: 1, name: 'Nike Air Max 270', brand: 'Running Shoes', price: '149.99' },
+            { id: 2, name: 'Jordan 1 Retro High', brand: 'Basketball Shoes', price: '170.00' },
+            { id: 3, name: 'Adidas Ultraboost', brand: 'Running Shoes', price: '180.00' },
+            { id: 4, name: 'New Balance 550', brand: 'Lifestyle', price: '120.00' }
+        ];
 
-    focusSearch() {
-        const searchInput = document.querySelector('.search-bar input');
-        if (searchInput) {
-            searchInput.focus();
-        }
+        suggestionsList.innerHTML = popularSearches.map(suggestion => `
+            <div class="suggestion-item" data-product-id="${suggestion.id}">
+                <div class="suggestion-info">
+                    <div class="suggestion-name">${suggestion.name}</div>
+                    <div class="suggestion-brand">${suggestion.brand}</div>
+                    <div class="suggestion-price">$${suggestion.price}</div>
+                </div>
+            </div>
+        `).join('');
+
+        // Add click events to suggestions
+        suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const productId = item.dataset.productId;
+                window.location.href = `products/detail.php?id=${productId}`;
+            });
+        });
     }
 
     // ===== USER INTERACTIONS =====
@@ -345,9 +320,12 @@ class StepStyle {
         const target = event.target;
         
         // Add to cart button
-        if (target.closest('.add-to-cart-btn')) {
+        if (target.closest('.btn-add-cart') || target.closest('.add-to-cart-btn')) {
             event.preventDefault();
-            const productCard = target.closest('.product-card');
+            const button = target.closest('.btn-add-cart') || target.closest('.add-to-cart-btn');
+            if (button.disabled) return;
+            
+            const productCard = button.closest('.product-card');
             this.addToCart(productCard);
             return;
         }
@@ -376,24 +354,17 @@ class StepStyle {
             return;
         }
         
-        // Color selection
-        if (target.closest('.color-dot')) {
-            event.preventDefault();
-            this.selectColor(target.closest('.color-dot'));
-            return;
-        }
-        
-        // Size selection
-        if (target.closest('.size-option')) {
-            event.preventDefault();
-            this.selectSize(target.closest('.size-option'));
-            return;
-        }
-        
         // Notification close
         if (target.closest('.notification-close')) {
             event.preventDefault();
             this.closeNotification(target.closest('.notification'));
+            return;
+        }
+        
+        // Modal close
+        if (target.closest('.modal-close') || target.closest('.modal-overlay')) {
+            event.preventDefault();
+            this.closeModal(target.closest('.modal-overlay'));
             return;
         }
     }
@@ -404,25 +375,31 @@ class StepStyle {
             cls.includes('cart-icon') || cls.includes('wishlist-icon') || cls.includes('user-profile')
         );
         
+        if (!actionType) return;
+
         switch (true) {
             case actionType.includes('cart-icon'):
-                window.location.href = '/user/cart.php';
+                if (actionIcon.querySelector('.cart-preview')) {
+                    // Toggle cart preview instead of navigating
+                    return;
+                }
+                window.location.href = 'user/cart.php';
                 break;
             case actionType.includes('wishlist-icon'):
-                window.location.href = '/user/wishlist.php';
+                window.location.href = 'user/wishlist.php';
                 break;
             case actionType.includes('user-profile'):
                 if (this.currentUser) {
-                    window.location.href = '/user/profile.php';
+                    window.location.href = 'user/profile.php';
                 } else {
-                    window.location.href = '/auth/login.php';
+                    window.location.href = 'auth/login.php';
                 }
                 break;
         }
     }
 
     // ===== CART FUNCTIONALITY =====
-    addToCart(productCard) {
+    async addToCart(productCard) {
         if (!productCard) {
             console.error('Product card not found');
             this.showNotification('Product not found', 'error');
@@ -430,280 +407,138 @@ class StepStyle {
         }
         
         const productId = productCard.dataset.productId;
-        const product = this.products.find(p => p.id === productId);
         
-        if (!product) {
-            console.error('Product not found in catalog');
-            this.showNotification('Product not available', 'error');
-            return;
-        }
-        
-        // Check if product is in stock
-        if (product.quantity <= 0) {
-            this.showNotification('Product is out of stock', 'warning');
-            return;
-        }
-        
-        // Get selected variant
-        const selectedVariant = this.getSelectedVariant(productCard);
-        const variantId = selectedVariant?.id || null;
-        
-        // Check variant stock
-        if (selectedVariant && selectedVariant.quantity <= 0) {
-            this.showNotification('Selected variant is out of stock', 'warning');
-            return;
-        }
-        
-        // Add to cart
-        const cartItem = {
-            id: this.generateCartItemId(productId, variantId),
-            productId: productId,
-            variantId: variantId,
-            name: product.name,
-            brand: product.brand,
-            price: selectedVariant ? product.price + selectedVariant.additional_price : product.price,
-            image: product.image,
-            quantity: 1,
-            variantInfo: selectedVariant ? {
-                size: selectedVariant.size,
-                color: selectedVariant.color
-            } : null,
-            maxQuantity: selectedVariant ? selectedVariant.quantity : product.quantity
-        };
-        
-        // Check if item already exists in cart
-        const existingItemIndex = this.cart.findIndex(item => item.id === cartItem.id);
-        
-        if (existingItemIndex > -1) {
-            // Update quantity
-            const existingItem = this.cart[existingItemIndex];
-            if (existingItem.quantity < existingItem.maxQuantity) {
-                existingItem.quantity += 1;
-                this.cart[existingItemIndex] = existingItem;
+        try {
+            // Send AJAX request to add to cart
+            const response = await fetch('API/cart/add.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: 1,
+                    csrf_token: this.csrfToken
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update cart count
+                this.updateCartCount(result.cart_count);
+                
+                // Animate cart icon
+                this.animateCartIcon();
+                
+                // Show success notification
+                this.showNotification('🎉 Product added to cart!', 'success');
+                
+                // Update cart preview
+                this.updateCartPreview();
             } else {
-                this.showNotification('Maximum quantity reached', 'warning');
-                return;
+                this.showNotification(result.message || 'Failed to add product to cart', 'error');
             }
-        } else {
-            // Add new item
-            this.cart.push(cartItem);
-        }
-        
-        // Update storage and UI
-        this.saveCartToStorage();
-        this.updateCartBadge();
-        this.animateCartIcon();
-        
-        // Show success notification
-        this.showNotification('🎉 Product added to cart!', 'success');
-        
-        console.log('Cart updated:', this.cart);
-    }
-
-    removeFromCart(cartItemId) {
-        this.cart = this.cart.filter(item => item.id !== cartItemId);
-        this.saveCartToStorage();
-        this.updateCartBadge();
-        this.showNotification('Item removed from cart', 'info');
-    }
-
-    updateCartQuantity(cartItemId, newQuantity) {
-        const item = this.cart.find(item => item.id === cartItemId);
-        if (item && newQuantity > 0 && newQuantity <= item.maxQuantity) {
-            item.quantity = newQuantity;
-            this.saveCartToStorage();
-            this.updateCartBadge();
+            
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            this.showNotification('Failed to add product to cart', 'error');
         }
     }
 
-    getSelectedVariant(productCard) {
-        const selectedColor = productCard.querySelector('.color-dot.active')?.dataset.variantId;
-        // In a real app, you'd fetch variant data based on selected options
-        return null; // Simplified for demo
+    updateCartCount(count) {
+        const cartBadges = document.querySelectorAll('.cart-count');
+        cartBadges.forEach(badge => {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        });
     }
 
-    generateCartItemId(productId, variantId) {
-        return variantId ? `${productId}-${variantId}` : productId;
+    updateCartPreview() {
+        // This would typically fetch updated cart data from the server
+        // For now, we'll just update the count in the preview header
+        const cartCount = document.querySelector('.cart-count')?.textContent || '0';
+        const previewHeader = document.querySelector('.cart-preview-header h4');
+        if (previewHeader) {
+            previewHeader.textContent = `Your Cart (${cartCount})`;
+        }
     }
 
     // ===== WISHLIST FUNCTIONALITY =====
-    toggleWishlist(productCard) {
+    async toggleWishlist(productCard) {
         if (!productCard) {
             console.error('Product card not found');
             return;
         }
         
         const productId = productCard.dataset.productId;
-        const product = this.products.find(p => p.id === productId);
         const wishlistBtn = productCard.querySelector('.wishlist-btn');
         
-        if (!product) {
-            console.error('Product not found in catalog');
-            return;
-        }
-        
-        const existingIndex = this.wishlist.findIndex(item => item.id === productId);
-        
-        if (existingIndex > -1) {
-            // Remove from wishlist
-            this.wishlist.splice(existingIndex, 1);
-            if (wishlistBtn) {
-                wishlistBtn.classList.remove('active');
-                wishlistBtn.innerHTML = '<i class="far fa-heart"></i>';
-            }
-            this.showNotification('💔 Removed from wishlist', 'info');
-        } else {
-            // Add to wishlist
-            this.wishlist.push({
-                id: productId,
-                name: product.name,
-                brand: product.brand,
-                price: product.price,
-                image: product.image,
-                addedAt: new Date().toISOString()
+        try {
+            const response = await fetch('API/wishlist.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    action: 'toggle',
+                    csrf_token: this.csrfToken
+                })
             });
-            
-            if (wishlistBtn) {
-                wishlistBtn.classList.add('active');
-                wishlistBtn.innerHTML = '<i class="fas fa-heart"></i>';
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.in_wishlist) {
+                    // Added to wishlist
+                    if (wishlistBtn) {
+                        wishlistBtn.classList.add('active');
+                        wishlistBtn.innerHTML = '<i class="fas fa-heart"></i>';
+                    }
+                    this.showNotification('❤️ Added to wishlist!', 'success');
+                } else {
+                    // Removed from wishlist
+                    if (wishlistBtn) {
+                        wishlistBtn.classList.remove('active');
+                        wishlistBtn.innerHTML = '<i class="far fa-heart"></i>';
+                    }
+                    this.showNotification('💔 Removed from wishlist', 'info');
+                }
+                
+                // Update wishlist count
+                this.updateWishlistCount(result.wishlist_count);
+            } else {
+                this.showNotification(result.message || 'Failed to update wishlist', 'error');
             }
-            this.showNotification('❤️ Added to wishlist!', 'success');
-            this.animateWishlistIcon(wishlistBtn);
+            
+        } catch (error) {
+            console.error('Error updating wishlist:', error);
+            this.showNotification('Failed to update wishlist', 'error');
         }
-        
-        this.saveWishlistToStorage();
-        this.updateWishlistBadge();
-        
-        console.log('Wishlist updated:', this.wishlist);
+    }
+
+    updateWishlistCount(count) {
+        const wishlistBadges = document.querySelectorAll('.wishlist-count');
+        wishlistBadges.forEach(badge => {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        });
     }
 
     // ===== PRODUCT INTERACTIONS =====
     quickView(productCard) {
         const productId = productCard?.dataset.productId;
-        const product = this.products.find(p => p.id === productId);
-        
-        if (product) {
-            this.showQuickViewModal(product);
+        if (productId) {
+            // Redirect to product detail page for now
+            // In a real implementation, this would show a modal
+            window.location.href = `products/detail.php?id=${productId}`;
         }
-    }
-
-    showQuickViewModal(product) {
-        // Create modal HTML
-        const modalHTML = `
-            <div class="modal-overlay quick-view-overlay">
-                <div class="modal-container quick-view-modal">
-                    <button class="modal-close" aria-label="Close quick view">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <div class="modal-content">
-                        <div class="product-quick-view">
-                            <div class="product-images">
-                                <div class="main-image">
-                                    <img src="${product.image}" alt="${product.name}">
-                                </div>
-                            </div>
-                            <div class="product-details">
-                                <div class="product-brand">${product.brand}</div>
-                                <h2 class="product-title">${product.name}</h2>
-                                <div class="product-price">
-                                    <span class="current-price">${this.formatPrice(product.price)}</span>
-                                    ${product.comparePrice ? `<span class="compare-price">${this.formatPrice(product.comparePrice)}</span>` : ''}
-                                </div>
-                                <div class="product-rating">
-                                    <div class="stars">${this.generateStarRating(product.rating)}</div>
-                                    <span class="rating-count">(${product.reviewCount} reviews)</span>
-                                </div>
-                                <div class="product-description">
-                                    ${product.description}
-                                </div>
-                                <div class="product-actions">
-                                    <button class="btn btn-primary add-to-cart-btn" data-product-id="${product.id}">
-                                        <i class="fas fa-shopping-cart"></i>
-                                        Add to Cart
-                                    </button>
-                                    <button class="btn btn-outline wishlist-btn" data-product-id="${product.id}">
-                                        <i class="far fa-heart"></i>
-                                        Add to Wishlist
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add to body
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        // Add event listeners
-        const modal = document.querySelector('.quick-view-overlay');
-        const closeBtn = modal.querySelector('.modal-close');
-        
-        closeBtn.addEventListener('click', () => this.closeModal(modal));
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeModal(modal);
-        });
-        
-        // Add product action listeners within modal
-        const addToCartBtn = modal.querySelector('.add-to-cart-btn');
-        const wishlistBtn = modal.querySelector('.wishlist-btn');
-        
-        if (addToCartBtn) {
-            addToCartBtn.addEventListener('click', () => {
-                this.addToCart({ dataset: { productId: product.id } });
-                this.closeModal(modal);
-            });
-        }
-        
-        if (wishlistBtn) {
-            wishlistBtn.addEventListener('click', () => {
-                this.toggleWishlist({ dataset: { productId: product.id } });
-                wishlistBtn.querySelector('i').className = 'fas fa-heart';
-                wishlistBtn.classList.add('active');
-            });
-        }
-    }
-
-    closeModal(modal) {
-        modal.style.opacity = '0';
-        setTimeout(() => {
-            if (modal.parentNode) {
-                modal.remove();
-            }
-        }, 300);
     }
 
     addToCompare(productCard) {
         const productId = productCard?.dataset.productId;
         this.showNotification('🔍 Added to comparison', 'info');
-        // Comparison functionality would be implemented here
-    }
-
-    selectColor(colorDot) {
-        const productCard = colorDot.closest('.product-card');
-        const colorDots = productCard.querySelectorAll('.color-dot');
-        
-        colorDots.forEach(dot => dot.classList.remove('active'));
-        colorDot.classList.add('active');
-        
-        // Update product image based on color
-        const color = colorDot.style.backgroundColor;
-        this.updateProductImage(productCard, color);
-    }
-
-    selectSize(sizeOption) {
-        const productCard = sizeOption.closest('.product-card');
-        const sizeOptions = productCard.querySelectorAll('.size-option');
-        
-        sizeOptions.forEach(option => option.classList.remove('active'));
-        sizeOption.classList.add('active');
-    }
-
-    updateProductImage(productCard, color) {
-        // This would update the product image based on selected color
-        // Implementation depends on your product data structure
-        console.log('Updating product image for color:', color);
     }
 
     // ===== NAVIGATION =====
@@ -735,110 +570,60 @@ class StepStyle {
         });
     }
 
-    setupDropdowns() {
-        const dropdowns = document.querySelectorAll('.dropdown');
-        
-        dropdowns.forEach(dropdown => {
-            dropdown.addEventListener('mouseenter', () => {
-                dropdown.classList.add('open');
-            });
-            
-            dropdown.addEventListener('mouseleave', () => {
-                dropdown.classList.remove('open');
-            });
-        });
-    }
-
     // ===== FORM HANDLING =====
-    handleNewsletterSubmit(event) {
+    async handleNewsletterSubmit(event) {
         event.preventDefault();
         const form = event.target;
         const emailInput = form.querySelector('input[type="email"]');
         const email = emailInput?.value.trim();
         
         if (email && this.validateEmail(email)) {
-            // Simulate API call
-            this.showLoading();
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subscribing...';
+            submitBtn.disabled = true;
             
-            setTimeout(() => {
-                this.hideLoading();
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
                 this.showNotification('📧 Thank you for subscribing to our newsletter!', 'success');
                 form.reset();
-            }, 1000);
+                
+            } catch (error) {
+                this.showNotification('❌ Failed to subscribe. Please try again.', 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
         } else {
             this.showNotification('❌ Please enter a valid email address', 'error');
         }
     }
 
-    handleContactSubmit(event) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        
-        // Basic validation
-        const name = formData.get('name');
-        const email = formData.get('email');
-        const message = formData.get('message');
-        
-        if (!name || !email || !message) {
-            this.showNotification('Please fill in all required fields', 'error');
-            return;
-        }
-        
-        if (!this.validateEmail(email)) {
-            this.showNotification('Please enter a valid email address', 'error');
-            return;
-        }
-        
-        // Simulate form submission
-        this.showLoading();
-        
-        setTimeout(() => {
-            this.hideLoading();
-            this.showNotification('✅ Thank you for your message! We\'ll get back to you soon.', 'success');
-            form.reset();
-        }, 1500);
-    }
-
     // ===== UI UPDATES =====
     updateCartBadge() {
+        // This would typically fetch from server
         const count = this.cart.reduce((total, item) => total + item.quantity, 0);
-        const cartBadges = document.querySelectorAll('.cart-count');
-        
-        cartBadges.forEach(badge => {
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'flex' : 'none';
-        });
+        this.updateCartCount(count);
     }
 
     updateWishlistBadge() {
+        // This would typically fetch from server
         const count = this.wishlist.length;
-        const wishlistBadges = document.querySelectorAll('.wishlist-count');
-        
-        wishlistBadges.forEach(badge => {
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'flex' : 'none';
-        });
+        this.updateWishlistCount(count);
     }
 
     animateCartIcon() {
         const cartIcons = document.querySelectorAll('.cart-icon');
         
         cartIcons.forEach(icon => {
-            icon.style.transform = 'scale(1.3)';
+            icon.style.transform = 'scale(1.2)';
             setTimeout(() => {
                 icon.style.transform = 'scale(1)';
             }, 300);
         });
-    }
-
-    animateWishlistIcon(wishlistBtn) {
-        if (wishlistBtn) {
-            wishlistBtn.style.transform = 'scale(1.3)';
-            setTimeout(() => {
-                wishlistBtn.style.transform = 'scale(1)';
-            }, 300);
-        }
     }
 
     // ===== NOTIFICATION SYSTEM =====
@@ -861,13 +646,12 @@ class StepStyle {
         setTimeout(() => notification.classList.add('show'), 100);
         
         // Auto-remove after 5 seconds
-        const autoRemove = setTimeout(() => {
+        setTimeout(() => {
             this.closeNotification(notification);
         }, 5000);
         
         // Close button
         notification.querySelector('.notification-close').addEventListener('click', () => {
-            clearTimeout(autoRemove);
             this.closeNotification(notification);
         });
     }
@@ -876,9 +660,7 @@ class StepStyle {
         if (notification) {
             notification.classList.remove('show');
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
+                notification.remove();
             }, 300);
         }
     }
@@ -887,204 +669,35 @@ class StepStyle {
     loadInitialData() {
         console.log('📦 Loading initial data...');
         
-        // Mock product data - in real app, this would come from an API
+        // Mock product data - in real app, this would come from API
         this.products = [
             {
                 id: '1',
                 name: 'Nike Air Max 270',
                 brand: 'Nike',
                 price: 150,
-                comparePrice: 180,
-                image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop',
-                description: 'Comfortable running shoes with advanced cushioning technology. Perfect for everyday wear and athletic activities.',
+                original_price: 180,
+                image_url: 'assets/images/products/nike-air-max-270.jpg',
+                description: 'Comfortable running shoes with advanced cushioning technology.',
                 rating: 4.5,
-                reviewCount: 128,
-                quantity: 10,
-                variants: [
-                    { id: '1-1', size: 'US 8', color: '#000000', quantity: 5 },
-                    { id: '1-2', size: 'US 9', color: '#ffffff', quantity: 3 },
-                    { id: '1-3', size: 'US 10', color: '#ff0000', quantity: 2 }
-                ]
+                review_count: 128,
+                stock_quantity: 10
             },
             {
                 id: '2',
                 name: 'Adidas Ultraboost 21',
                 brand: 'Adidas',
                 price: 180,
-                comparePrice: 220,
-                image: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=400&fit=crop',
-                description: 'High-performance running shoes with responsive cushioning and superior comfort.',
+                original_price: 220,
+                image_url: 'assets/images/products/adidas-ultraboost-21.jpg',
+                description: 'High-performance running shoes with responsive cushioning.',
                 rating: 4.8,
-                reviewCount: 256,
-                quantity: 15,
-                variants: [
-                    { id: '2-1', size: 'US 8', color: '#0000ff', quantity: 8 },
-                    { id: '2-2', size: 'US 9', color: '#000000', quantity: 7 }
-                ]
-            },
-            {
-                id: '3',
-                name: 'Jordan 1 Retro High',
-                brand: 'Jordan',
-                price: 170,
-                comparePrice: 200,
-                image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=400&fit=crop',
-                description: 'Classic basketball shoes with modern comfort and timeless style.',
-                rating: 4.7,
-                reviewCount: 89,
-                quantity: 8,
-                variants: [
-                    { id: '3-1', size: 'US 9', color: '#ce1141', quantity: 4 },
-                    { id: '3-2', size: 'US 10', color: '#000000', quantity: 4 }
-                ]
-            },
-            {
-                id: '4',
-                name: 'Puma RS-X',
-                brand: 'Puma',
-                price: 120,
-                comparePrice: 150,
-                image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400&h=400&fit=crop',
-                description: 'Bold design with maximum comfort for all-day wear. Perfect for urban lifestyle.',
-                rating: 4.3,
-                reviewCount: 67,
-                quantity: 12,
-                variants: [
-                    { id: '4-1', size: 'US 8', color: '#ff6b35', quantity: 6 },
-                    { id: '4-2', size: 'US 9', color: '#000000', quantity: 6 }
-                ]
+                review_count: 256,
+                stock_quantity: 15
             }
         ];
         
-        this.renderProducts();
         console.log('✅ Initial data loaded');
-    }
-
-    renderProducts() {
-        const productsGrid = document.querySelector('.products-grid');
-        if (!productsGrid) {
-            console.warn('Products grid not found');
-            return;
-        }
-        
-        console.log('🎨 Rendering products...');
-        
-        productsGrid.innerHTML = this.products.map(product => `
-            <div class="product-card" data-product-id="${product.id}">
-                <div class="product-image">
-                    <a href="/products/detail.php?id=${product.id}" class="product-image-link">
-                        <img src="${product.image}" alt="${product.name}" 
-                             onerror="this.src='/assets/images/products/placeholder.jpg'">
-                    </a>
-                    
-                    ${product.comparePrice ? `<div class="discount-badge">-${Math.round((1 - product.price / product.comparePrice) * 100)}%</div>` : ''}
-                    
-                    <div class="product-actions">
-                        <button class="action-btn wishlist-btn" 
-                                data-product-id="${product.id}"
-                                title="Add to Wishlist">
-                            <i class="far fa-heart"></i>
-                        </button>
-                        
-                        <button class="action-btn quick-view-btn" 
-                                data-product-id="${product.id}"
-                                title="Quick View">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        
-                        <button class="action-btn compare-btn" 
-                                data-product-id="${product.id}"
-                                title="Add to Compare">
-                            <i class="fas fa-exchange-alt"></i>
-                        </button>
-                    </div>
-                    
-                    ${product.variants && product.variants.length > 0 ? `
-                        <div class="color-options">
-                            ${product.variants.slice(0, 4).map(variant => `
-                                <div class="color-dot" 
-                                     style="background-color: ${variant.color}"
-                                     data-variant-id="${variant.id}"
-                                     title="Color variant"></div>
-                            `).join('')}
-                            ${product.variants.length > 4 ? `
-                                <div class="color-more" title="More colors">
-                                    +${product.variants.length - 4}
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="product-info">
-                    <div class="product-meta">
-                        <a href="/products/brand.php?brand=${product.brand.toLowerCase()}" class="product-brand">
-                            ${product.brand}
-                        </a>
-                    </div>
-                    
-                    <h3 class="product-name">
-                        <a href="/products/detail.php?id=${product.id}">
-                            ${product.name}
-                        </a>
-                    </h3>
-                    
-                    <p class="product-description">
-                        ${product.description}
-                    </p>
-                    
-                    <div class="product-rating">
-                        <div class="stars">
-                            ${this.generateStarRating(product.rating)}
-                        </div>
-                        <span class="rating-count">(${product.reviewCount})</span>
-                    </div>
-                    
-                    <div class="product-price">
-                        <span class="current-price">${this.formatPrice(product.price)}</span>
-                        ${product.comparePrice ? `<span class="compare-price">${this.formatPrice(product.comparePrice)}</span>` : ''}
-                    </div>
-                    
-                    ${product.variants && product.variants.length > 0 ? `
-                        <div class="size-options">
-                            ${Array.from(new Set(product.variants.map(v => v.size))).slice(0, 5).map(size => `
-                                <span class="size-option">${size}</span>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    
-                    <div class="product-actions-bottom">
-                        ${product.quantity > 0 ? `
-                            <button class="btn btn-primary add-to-cart-btn" 
-                                    data-product-id="${product.id}">
-                                <i class="fas fa-shopping-cart"></i>
-                                Add to Cart
-                            </button>
-                        ` : `
-                            <button class="btn btn-secondary notify-me-btn" 
-                                    data-product-id="${product.id}"
-                                    disabled>
-                                <i class="fas fa-bell"></i>
-                                Notify When Available
-                            </button>
-                        `}
-                    </div>
-                    
-                    <div class="product-features">
-                        <div class="feature-tag">
-                            <i class="fas fa-shipping-fast"></i>
-                            Free Shipping
-                        </div>
-                        <div class="feature-tag">
-                            <i class="fas fa-undo"></i>
-                            Easy Returns
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
-        console.log('✅ Products rendered successfully');
     }
 
     // ===== STORAGE MANAGEMENT =====
@@ -1113,8 +726,8 @@ class StepStyle {
             const savedWishlist = localStorage.getItem('stepstyle_wishlist');
             if (savedWishlist) {
                 this.wishlist = JSON.parse(savedWishlist);
-            // Update wishlist buttons
-            this.updateWishlistButtons();
+                // Update wishlist buttons
+                this.updateWishlistButtons();
             }
         } catch (error) {
             console.error('Error loading wishlist from storage:', error);
@@ -1156,8 +769,10 @@ class StepStyle {
             backToTop.classList.toggle('visible', scrollY > 300);
         }
         
-        // Parallax effects
-        this.handleParallax();
+        // Scroll to top when back to top button is clicked
+        backToTop?.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     }
 
     handleResize() {
@@ -1167,65 +782,7 @@ class StepStyle {
         }
     }
 
-    handleParallax() {
-        const hero = document.querySelector('.hero');
-        if (!hero) return;
-        
-        const scrolled = window.pageYOffset;
-        const parallaxSpeed = 0.5;
-        hero.style.transform = `translateY(${scrolled * parallaxSpeed}px)`;
-    }
-
-    handleEscapeKey() {
-        // Close modals
-        const modals = document.querySelectorAll('.modal-overlay');
-        modals.forEach(modal => this.closeModal(modal));
-        
-        // Close mobile menu
-        this.closeMobileMenu();
-        
-        // Close search suggestions
-        this.hideSearchSuggestions();
-    }
-
-    toggleCartPreview() {
-        // This would toggle a cart preview sidebar
-        this.showNotification('Cart preview feature coming soon!', 'info');
-    }
-
     // ===== UTILITY FUNCTIONS =====
-    formatPrice(price) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(price);
-    }
-
-    generateStarRating(rating) {
-        const fullStars = Math.floor(rating);
-        const halfStar = (rating - fullStars) >= 0.5;
-        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-        
-        let stars = '';
-        
-        // Full stars
-        for (let i = 0; i < fullStars; i++) {
-            stars += '<i class="fas fa-star active"></i>';
-        }
-        
-        // Half star
-        if (halfStar) {
-            stars += '<i class="fas fa-star-half-alt active"></i>';
-        }
-        
-        // Empty stars
-        for (let i = 0; i < emptyStars; i++) {
-            stars += '<i class="far fa-star"></i>';
-        }
-        
-        return stars;
-    }
-
     validateEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
@@ -1260,12 +817,6 @@ class StepStyle {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('animated');
-                    
-                    // Stagger animation for product cards
-                    if (entry.target.classList.contains('product-card')) {
-                        const delay = Array.from(entry.target.parentNode.children).indexOf(entry.target) * 100;
-                        entry.target.style.animationDelay = `${delay}ms`;
-                    }
                 }
             });
         }, { 
@@ -1274,37 +825,10 @@ class StepStyle {
         });
 
         // Observe elements for animation
-        const elementsToObserve = document.querySelectorAll('.product-card, .brand-card, .section-title');
+        const elementsToObserve = document.querySelectorAll('.product-card, .brand-card, .category-card, .section-title');
         elementsToObserve.forEach(el => {
             if (el) observer.observe(el);
         });
-    }
-
-    setupErrorHandling() {
-        // Global error handler
-        window.addEventListener('error', (event) => {
-            console.error('Global error:', event.error);
-            this.showNotification('An unexpected error occurred', 'error');
-        });
-        
-        // Unhandled promise rejection
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Unhandled promise rejection:', event.reason);
-            this.showNotification('An unexpected error occurred', 'error');
-        });
-    }
-
-    // ===== SERVICE WORKER =====
-    initializeServiceWorker() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('✅ Service Worker registered:', registration);
-                })
-                .catch(error => {
-                    console.log('❌ Service Worker registration failed:', error);
-                });
-        }
     }
 
     // ===== PUBLIC METHODS =====
@@ -1320,27 +844,19 @@ class StepStyle {
         return this.products.find(product => product.id === id);
     }
 
-    viewProduct(productId) {
-        window.location.href = `/products/detail.php?id=${productId}`;
-    }
-
     // ===== DESTROY =====
     destroy() {
-        // Clean up event listeners and resources
         this.isInitialized = false;
         console.log('🧹 StepStyle application destroyed');
     }
 }
 
 // ===== APPLICATION BOOTSTRAP =====
-// Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🌐 DOM fully loaded, initializing StepStyle...');
     
     try {
         window.StepStyle = new StepStyle();
-        
-        // Make it globally available
         window.stepstyle = window.StepStyle;
         
         console.log('🎉 StepStyle application initialized successfully!');
@@ -1348,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
         console.error('💥 Failed to initialize StepStyle:', error);
         
-        // Emergency fallback: Remove loading screen
+        // Emergency fallback
         const loading = document.querySelector('.loading');
         if (loading) loading.remove();
         
@@ -1376,11 +892,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Fallback for DOM already loaded
 if (document.readyState !== 'loading') {
-    console.log('⚡ DOM already ready, initializing immediately...');
     window.StepStyle = new StepStyle();
-}
-
-// Export for module usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = StepStyle;
 }

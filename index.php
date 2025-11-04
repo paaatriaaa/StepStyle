@@ -1,300 +1,309 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'config/functions.php';
-
-// Initialize database
-try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
-    // Initialize database schema if needed
-    DatabaseSchema::initialize($db);
-    
-    // Get featured products
-    $featured_query = "
-        SELECT p.*, b.name as brand_name, b.slug as brand_slug,
-               (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = TRUE LIMIT 1) as image_url,
-               (SELECT AVG(rating) FROM reviews WHERE product_id = p.id AND is_approved = TRUE) as avg_rating,
-               (SELECT COUNT(*) FROM reviews WHERE product_id = p.id AND is_approved = TRUE) as review_count
-        FROM products p
-        LEFT JOIN brands b ON p.brand_id = b.id
-        WHERE p.is_featured = TRUE AND p.is_published = TRUE
-        ORDER BY p.created_at DESC
-        LIMIT 8
-    ";
-    $featured_stmt = $db->prepare($featured_query);
-    $featured_stmt->execute();
-    $featured_products = $featured_stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get new arrivals
-    $new_arrivals_query = "
-        SELECT p.*, b.name as brand_name, b.slug as brand_slug,
-               (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = TRUE LIMIT 1) as image_url
-        FROM products p
-        LEFT JOIN brands b ON p.brand_id = b.id
-        WHERE p.is_published = TRUE
-        ORDER BY p.created_at DESC
-        LIMIT 6
-    ";
-    $new_arrivals_stmt = $db->prepare($new_arrivals_query);
-    $new_arrivals_stmt->execute();
-    $new_arrivals = $new_arrivals_stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get featured brands
-    $brands_query = "SELECT * FROM brands WHERE is_featured = TRUE ORDER BY name LIMIT 6";
-    $brands_stmt = $db->prepare($brands_query);
-    $brands_stmt->execute();
-    $featured_brands = $brands_stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-} catch (Exception $e) {
-    error_log("Homepage initialization error: " . $e->getMessage());
-    $featured_products = [];
-    $new_arrivals = [];
-    $featured_brands = [];
+// Start session and set base path
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
 // Set page metadata
-$page_title = "Premium Footwear Collection";
-$page_description = "Discover the latest sneakers from top brands. Nike, Adidas, Jordan, and more. Free shipping on orders over $100.";
-$additional_css = ['/assets/css/home.css'];
-?>
+$page_title = 'StepStyle - Premium Footwear & Sneakers';
+$page_description = 'Discover the latest sneakers from top brands. Nike, Adidas, Jordan, and more. Free shipping on orders over $100.';
+$body_class = 'home-page';
 
+// Include configuration
+require_once 'config/database.php';
+require_once 'config/functions.php';
+
+// Get featured products
+$featured_products = getFeaturedProducts(8);
+$new_arrivals = getNewArrivals(4);
+$top_brands = getTopBrands();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php include 'components/header.php'; ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?></title>
+    <meta name="description" content="<?php echo $page_description; ?>">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/home.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
 </head>
-<body class="home-page">
-    <?php include 'components/header.php'; ?>
+<body class="<?php echo $body_class; ?>">
 
+<!-- Loading Screen -->
+<div class="loading" id="global-loading">
+    <div class="loader-container">
+        <div class="loader"></div>
+        <p>Loading StepStyle...</p>
+    </div>
+</div>
+
+<!-- Header -->
+<?php include 'components/header.php'; ?>
+
+<!-- Mobile Navigation -->
+<?php include 'components/navigation.php'; ?>
+
+<main class="main-content">
     <!-- Hero Section -->
-    <section class="hero" id="home">
+    <section class="hero-section">
         <div class="container">
             <div class="hero-content">
-                <h1>Step Into <span class="highlight">Style</span></h1>
-                <p>Discover the latest collection of premium sneakers from top brands worldwide. Elevate your footwear game with our exclusive designs and unbeatable prices.</p>
-                <div class="hero-buttons">
-                    <a href="#new-arrivals" class="btn btn-primary">
-                        <i class="fas fa-bolt"></i> Shop New Arrivals
-                    </a>
-                    <a href="#featured" class="btn btn-secondary">
-                        <i class="fas fa-star"></i> View Featured
-                    </a>
+                <div class="hero-text">
+                    <span class="hero-badge">🔥 New Collection 2024</span>
+                    <h1 class="hero-title">Step Into <span class="highlight">Style</span> With Premium Sneakers</h1>
+                    <p class="hero-description">
+                        Discover the latest trends in footwear from top brands. 
+                        Limited editions, exclusive drops, and timeless classics all in one place.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="products/categories.php?filter=new" class="btn btn-primary pulse">
+                            <i class="fas fa-bolt"></i>
+                            Shop New Arrivals
+                        </a>
+                        <a href="products/categories.php?filter=sale" class="btn btn-secondary">
+                            <i class="fas fa-percentage"></i>
+                            View Sale (50% OFF)
+                        </a>
+                    </div>
+                    <div class="hero-features">
+                        <div class="feature">
+                            <i class="fas fa-shipping-fast"></i>
+                            <span>Free Shipping $50+</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-undo"></i>
+                            <span>30-Day Returns</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>100% Authentic</span>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="hero-stats">
-                    <div class="stat">
-                        <div class="stat-number">10K+</div>
-                        <div class="stat-label">Happy Customers</div>
+                <div class="hero-visual">
+                    <div class="sneaker-showcase">
+                        <div class="hero-sneaker">
+                            <i class="fas fa-shoe-prints"></i>
+                        </div>
+                        <div class="floating-badge price-badge">
+                            <span class="price">$149.99</span>
+                            <span class="label">Featured</span>
+                        </div>
+                        <div class="floating-badge brand-badge">
+                            <i class="fas fa-crown"></i>
+                            <span>Limited Edition</span>
+                        </div>
                     </div>
-                    <div class="stat">
-                        <div class="stat-number">500+</div>
-                        <div class="stat-label">Premium Products</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-number">24/7</div>
-                        <div class="stat-label">Customer Support</div>
-                    </div>
-                </div>
-            </div>
-            <div class="hero-image">
-                <div class="hero-shoe-container">
-                    <div class="hero-shoe">👟</div>
-                    <div class="shoe-glow"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Brands Section -->
-    <section class="section brands-section" id="brands">
+    <!-- Featured Brands Section -->
+    <section class="featured-brands section-padding">
         <div class="container">
-            <h2 class="section-title">Featured Brands</h2>
-            <p class="section-subtitle">Shop from the world's most trusted footwear brands</p>
-            
+            <div class="section-header">
+                <h2 class="section-title">🔥 Trusted by Top Brands</h2>
+                <p class="section-subtitle">Shop authentic footwear from world-renowned brands</p>
+            </div>
             <div class="brands-grid">
-                <?php foreach ($featured_brands as $brand): ?>
-                <div class="brand-card" data-brand-slug="<?php echo $brand['slug']; ?>">
-                    <div class="brand-logo">
-                        <?php echo strtoupper(substr($brand['name'], 0, 2)); ?>
+                <?php foreach ($top_brands as $brand): ?>
+                <div class="brand-card">
+                    <div class="brand-logo" style="background: <?php echo $brand['color']; ?>">
+                        <i class="fas <?php echo $brand['icon']; ?>"></i>
                     </div>
-                    <h3><?php echo htmlspecialchars($brand['name']); ?></h3>
-                    <p class="brand-description"><?php echo htmlspecialchars($brand['description'] ?? 'Premium footwear collection'); ?></p>
-                    <a href="/products/brand.php?slug=<?php echo $brand['slug']; ?>" class="brand-link">
-                        Shop Now <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <span class="brand-name"><?php echo $brand['name']; ?></span>
                 </div>
                 <?php endforeach; ?>
-            </div>
-            
-            <div class="section-cta">
-                <a href="/products/brands.php" class="btn btn-outline">
-                    View All Brands <i class="fas fa-arrow-right"></i>
-                </a>
             </div>
         </div>
     </section>
 
     <!-- New Arrivals Section -->
-    <section class="section new-arrivals-section" id="new-arrivals">
+    <section class="new-arrivals section-padding bg-light">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">New Arrivals</h2>
-                <p class="section-subtitle">Discover the latest additions to our collection</p>
-                <a href="/products/new-arrivals.php" class="view-all-link">
-                    View All <i class="fas fa-arrow-right"></i>
+                <div class="header-content">
+                    <h2 class="section-title">🆕 New Arrivals</h2>
+                    <p class="section-subtitle">Fresh kicks just dropped. Get them before they're gone!</p>
+                </div>
+                <a href="products/categories.php?filter=new" class="view-all-link">
+                    View All
+                    <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
             
             <div class="products-grid">
                 <?php foreach ($new_arrivals as $product): ?>
-                <div class="product-card" data-product-id="<?php echo $product['id']; ?>">
-                    <div class="product-image">
-                        <a href="/products/detail.php?id=<?php echo $product['id']; ?>" class="product-image-link">
-                            <img src="<?php echo $product['image_url'] ?? '/assets/images/products/placeholder.jpg'; ?>" 
-                                 alt="<?php echo htmlspecialchars($product['name']); ?>">
-                        </a>
-                        
-                        <div class="product-badges">
-                            <div class="badge new-badge">NEW</div>
-                            <?php if ($product['compare_price'] && $product['compare_price'] > $product['price']): ?>
-                                <div class="badge discount-badge">
-                                    -<?php echo calculateDiscount($product['compare_price'], $product['price']); ?>%
-                                </div>
-                            <?php endif; ?>
+                    <?php include 'components/product-card.php'; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="categories-section section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">📁 Shop by Category</h2>
+                <p class="section-subtitle">Find the perfect shoes for every occasion</p>
+            </div>
+            
+            <div class="categories-grid">
+                <?php
+                $categories = [
+                    ['name' => 'Running', 'icon' => 'fa-running', 'desc' => 'Performance shoes for every run'],
+                    ['name' => 'Basketball', 'icon' => 'fa-basketball-ball', 'desc' => 'Court-ready performance'],
+                    ['name' => 'Lifestyle', 'icon' => 'fa-user', 'desc' => 'Everyday comfort & style'],
+                    ['name' => 'Skateboarding', 'icon' => 'fa-skating', 'desc' => 'Durable boardside performance']
+                ];
+                
+                foreach ($categories as $category):
+                ?>
+                <div class="category-card">
+                    <div class="category-image">
+                        <div class="category-image-placeholder">
+                            <i class="fas <?php echo $category['icon']; ?>"></i>
                         </div>
-                        
-                        <div class="product-actions">
-                            <button class="action-btn wishlist-btn" data-product-id="<?php echo $product['id']; ?>">
-                                <i class="far fa-heart"></i>
-                            </button>
-                            <button class="action-btn quick-view-btn" data-product-id="<?php echo $product['id']; ?>">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
+                        <div class="category-overlay"></div>
                     </div>
-                    
-                    <div class="product-info">
-                        <div class="product-meta">
-                            <a href="/products/brand.php?slug=<?php echo $product['brand_slug']; ?>" class="product-brand">
-                                <?php echo htmlspecialchars($product['brand_name']); ?>
-                            </a>
-                        </div>
-                        
-                        <h3 class="product-name">
-                            <a href="/products/detail.php?id=<?php echo $product['id']; ?>">
-                                <?php echo htmlspecialchars($product['name']); ?>
-                            </a>
-                        </h3>
-                        
-                        <div class="product-price">
-                            <span class="current-price"><?php echo formatPrice($product['price']); ?></span>
-                            <?php if ($product['compare_price'] && $product['compare_price'] > $product['price']): ?>
-                                <span class="compare-price"><?php echo formatPrice($product['compare_price']); ?></span>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <button class="btn btn-primary add-to-cart-btn" data-product-id="<?php echo $product['id']; ?>">
-                            <i class="fas fa-shopping-cart"></i>
-                            Add to Cart
-                        </button>
+                    <div class="category-content">
+                        <i class="fas <?php echo $category['icon']; ?> category-icon"></i>
+                        <h3 class="category-title"><?php echo $category['name']; ?></h3>
+                        <p class="category-description"><?php echo $category['desc']; ?></p>
+                        <a href="products/categories.php?cat=<?php echo strtolower($category['name']); ?>" class="category-link">
+                            Shop Now
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
                 <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sale Banner -->
+    <section class="sale-banner section-padding">
+        <div class="container">
+            <div class="banner-content">
+                <div class="banner-text">
+                    <span class="banner-subtitle">🔥 Summer Sale</span>
+                    <h2 class="banner-title">Up to <span class="highlight">50% OFF</span></h2>
+                    <p class="banner-description">
+                        Don't miss out on our biggest sale of the season. 
+                        Limited time offer on selected styles. Hurry before they're gone!
+                    </p>
+                    <div class="countdown-timer">
+                        <div class="timer-item">
+                            <span class="timer-number" id="days">05</span>
+                            <span class="timer-label">Days</span>
+                        </div>
+                        <div class="timer-item">
+                            <span class="timer-number" id="hours">12</span>
+                            <span class="timer-label">Hours</span>
+                        </div>
+                        <div class="timer-item">
+                            <span class="timer-number" id="minutes">45</span>
+                            <span class="timer-label">Minutes</span>
+                        </div>
+                        <div class="timer-item">
+                            <span class="timer-number" id="seconds">30</span>
+                            <span class="timer-label">Seconds</span>
+                        </div>
+                    </div>
+                    <a href="products/categories.php?filter=sale" class="btn btn-primary btn-large pulse">
+                        <i class="fas fa-fire"></i>
+                        Shop Sale Now
+                    </a>
+                </div>
+                <div class="banner-visual">
+                    <div class="sale-sneaker">
+                        <div class="sale-sneaker-placeholder">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="discount-badge">50% OFF</div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Featured Products Section -->
-    <section class="section featured-section" id="featured">
+    <section class="featured-products section-padding bg-light">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Featured Products</h2>
+                <h2 class="section-title">⭐ Featured Products</h2>
                 <p class="section-subtitle">Curated selection of our most popular items</p>
             </div>
             
             <div class="products-grid">
                 <?php foreach ($featured_products as $product): ?>
-                <div class="product-card featured-product" data-product-id="<?php echo $product['id']; ?>">
-                    <div class="product-image">
-                        <a href="/products/detail.php?id=<?php echo $product['id']; ?>" class="product-image-link">
-                            <img src="<?php echo $product['image_url'] ?? '/assets/images/products/placeholder.jpg'; ?>" 
-                                 alt="<?php echo htmlspecialchars($product['name']); ?>">
-                        </a>
-                        
-                        <div class="product-badges">
-                            <div class="badge featured-badge">
-                                <i class="fas fa-star"></i> FEATURED
-                            </div>
-                            <?php if ($product['compare_price'] && $product['compare_price'] > $product['price']): ?>
-                                <div class="badge discount-badge">
-                                    -<?php echo calculateDiscount($product['compare_price'], $product['price']); ?>%
-                                </div>
-                            <?php endif; ?>
+                    <?php include 'components/product-card.php'; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">⭐ What Our Customers Say</h2>
+                <p class="section-subtitle">Join thousands of satisfied sneakerheads</p>
+            </div>
+            
+            <div class="testimonials-grid">
+                <?php
+                $testimonials = [
+                    [
+                        'name' => 'Sarah Johnson',
+                        'role' => 'Sneaker Collector',
+                        'text' => 'The quality and authenticity of the sneakers are unmatched. Fast shipping and great customer service!',
+                        'rating' => 5
+                    ],
+                    [
+                        'name' => 'Mike Chen',
+                        'role' => 'Basketball Player',
+                        'text' => 'Finally found a store that has all the limited editions I\'ve been looking for. StepStyle is my go-to for rare kicks!',
+                        'rating' => 5
+                    ],
+                    [
+                        'name' => 'Emily Rodriguez',
+                        'role' => 'Fashion Blogger',
+                        'text' => 'Excellent customer service and the return policy is hassle-free. Will definitely shop here again!',
+                        'rating' => 4.5
+                    ]
+                ];
+                
+                foreach ($testimonials as $testimonial):
+                ?>
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        <div class="stars">
+                            <?php echo generateStarRating($testimonial['rating']); ?>
                         </div>
-                        
-                        <div class="product-actions">
-                            <button class="action-btn wishlist-btn" data-product-id="<?php echo $product['id']; ?>">
-                                <i class="far fa-heart"></i>
-                            </button>
-                            <button class="action-btn quick-view-btn" data-product-id="<?php echo $product['id']; ?>">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
+                        <p class="testimonial-text">"<?php echo $testimonial['text']; ?>"</p>
                     </div>
-                    
-                    <div class="product-info">
-                        <div class="product-meta">
-                            <a href="/products/brand.php?slug=<?php echo $product['brand_slug']; ?>" class="product-brand">
-                                <?php echo htmlspecialchars($product['brand_name']); ?>
-                            </a>
-                            <?php if ($product['avg_rating']): ?>
-                                <div class="product-rating">
-                                    <div class="stars">
-                                        <?php
-                                        $rating = $product['avg_rating'];
-                                        $fullStars = floor($rating);
-                                        $halfStar = ($rating - $fullStars) >= 0.5;
-                                        $emptyStars = 5 - $fullStars - ($halfStar ? 1 : 0);
-                                        
-                                        for ($i = 0; $i < $fullStars; $i++) {
-                                            echo '<i class="fas fa-star active"></i>';
-                                        }
-                                        if ($halfStar) {
-                                            echo '<i class="fas fa-star-half-alt active"></i>';
-                                        }
-                                        for ($i = 0; $i < $emptyStars; $i++) {
-                                            echo '<i class="far fa-star"></i>';
-                                        }
-                                        ?>
-                                    </div>
-                                    <span class="rating-count">(<?php echo $product['review_count'] ?? 0; ?>)</span>
-                                </div>
-                            <?php endif; ?>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">
+                            <i class="fas fa-user"></i>
                         </div>
-                        
-                        <h3 class="product-name">
-                            <a href="/products/detail.php?id=<?php echo $product['id']; ?>">
-                                <?php echo htmlspecialchars($product['name']); ?>
-                            </a>
-                        </h3>
-                        
-                        <p class="product-description">
-                            <?php echo htmlspecialchars($product['short_description'] ?? $product['description'] ?? ''); ?>
-                        </p>
-                        
-                        <div class="product-price">
-                            <span class="current-price"><?php echo formatPrice($product['price']); ?></span>
-                            <?php if ($product['compare_price'] && $product['compare_price'] > $product['price']): ?>
-                                <span class="compare-price"><?php echo formatPrice($product['compare_price']); ?></span>
-                            <?php endif; ?>
+                        <div class="author-info">
+                            <h4 class="author-name"><?php echo $testimonial['name']; ?></h4>
+                            <span class="author-role"><?php echo $testimonial['role']; ?></span>
                         </div>
-                        
-                        <button class="btn btn-primary add-to-cart-btn" data-product-id="<?php echo $product['id']; ?>">
-                            <i class="fas fa-shopping-cart"></i>
-                            Add to Cart
-                        </button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -302,127 +311,42 @@ $additional_css = ['/assets/css/home.css'];
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="section features-section">
-        <div class="container">
-            <h2 class="section-title">Why Choose StepStyle?</h2>
-            
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shipping-fast"></i>
-                    </div>
-                    <h3>Free Shipping</h3>
-                    <p>Free delivery on all orders over $50. Fast and reliable shipping to your doorstep.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-undo"></i>
-                    </div>
-                    <h3>Easy Returns</h3>
-                    <p>30-day return policy. Not satisfied? Return your items for a full refund.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3>Secure Payment</h3>
-                    <p>100% secure payment processing. Your financial information is always protected.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-headset"></i>
-                    </div>
-                    <h3>24/7 Support</h3>
-                    <p>Round-the-clock customer service. We're here to help whenever you need us.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-award"></i>
-                    </div>
-                    <h3>Quality Guarantee</h3>
-                    <p>Premium quality products backed by our satisfaction guarantee.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-tag"></i>
-                    </div>
-                    <h3>Best Prices</h3>
-                    <p>Competitive pricing with regular sales and exclusive member discounts.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Newsletter Section -->
-    <section class="section newsletter-section">
+    <section class="newsletter-section bg-dark">
         <div class="container">
             <div class="newsletter-content">
                 <div class="newsletter-text">
-                    <h2>Stay in the Loop</h2>
-                    <p>Subscribe to our newsletter and be the first to know about new arrivals, exclusive offers, and style tips.</p>
+                    <h2 class="newsletter-title">📧 Stay in the Loop</h2>
+                    <p class="newsletter-description">
+                        Get exclusive access to new drops, special offers, and style tips. 
+                        Be the first to know about limited releases.
+                    </p>
                 </div>
                 <div class="newsletter-form">
-                    <form class="newsletter-signup" id="home-newsletter-form">
+                    <form class="subscribe-form" id="home-newsletter-form">
                         <div class="input-group">
                             <input type="email" placeholder="Enter your email address" required>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i> Subscribe
+                                <i class="fas fa-paper-plane"></i>
+                                Subscribe
                             </button>
                         </div>
                         <div class="form-note">
-                            By subscribing, you agree to our <a href="/privacy.php">Privacy Policy</a>
+                            By subscribing, you agree to our Privacy Policy
                         </div>
                     </form>
                 </div>
             </div>
         </div>
     </section>
+</main>
 
-    <?php include 'components/footer.php'; ?>
+<!-- Footer -->
+<?php include 'components/footer.php'; ?>
 
-    <!-- Homepage Specific Scripts -->
-    <script>
-    // Homepage specific functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Hero section animations
-        const heroElements = document.querySelectorAll('.hero-content > *');
-        heroElements.forEach((el, index) => {
-            el.style.animationDelay = `${index * 0.2}s`;
-        });
-        
-        // Brand cards hover effects
-        const brandCards = document.querySelectorAll('.brand-card');
-        brandCards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-10px) scale(1.05)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-        
-        // Newsletter form handling
-        const newsletterForm = document.getElementById('home-newsletter-form');
-        if (newsletterForm) {
-            newsletterForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const email = this.querySelector('input[type="email"]').value;
-                
-                // Simulate subscription
-                if (window.StepStyle) {
-                    window.StepStyle.showNotification('🎉 Thank you for subscribing!', 'success');
-                    this.reset();
-                }
-            });
-        }
-    });
-    </script>
+<!-- JavaScript -->
+<script src="assets/js/main.js"></script>
+<script src="assets/js/home.js"></script>
+
 </body>
 </html>

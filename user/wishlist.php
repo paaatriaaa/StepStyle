@@ -1,262 +1,265 @@
 <?php
-session_start();
+// Start session and set base path
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Set page metadata
+$page_title = 'My Wishlist - StepStyle';
+$page_description = 'Save your favorite products and create your wishlist. Never miss out on your dream sneakers.';
+$body_class = 'wishlist-page';
+
+// Include configuration
 require_once '../config/database.php';
 require_once '../config/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-    redirect('../auth/login.php');
-}
-
-// Demo wishlist data
-$wishlist_items = [
-    [
-        'id' => 1,
-        'product_id' => 1,
-        'name' => 'Nike Air Max 270 React',
-        'brand' => 'Nike',
-        'price' => 15990,
-        'original_price' => 18990,
-        'image' => '../../assets/images/products/nike-air-max-270.jpg',
-        'size_range' => 'US 6-12',
-        'colors' => ['Black', 'White', 'Red'],
-        'rating' => 4.5,
-        'review_count' => 128,
-        'in_stock' => true
-    ],
-    [
-        'id' => 2,
-        'product_id' => 3,
-        'name' => 'Puma RS-X Toys',
-        'brand' => 'Puma',
-        'price' => 11990,
-        'original_price' => 14990,
-        'image' => '../../assets/images/products/puma-rs-x.jpg',
-        'size_range' => 'US 6-11',
-        'colors' => ['Multicolor', 'Black'],
-        'rating' => 4.2,
-        'review_count' => 89,
-        'in_stock' => true
-    ]
-];
+// Get wishlist items
+$wishlist_items = getWishlistItems();
+$wishlist_count = count($wishlist_items);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Wishlist - StepStyle</title>
+    <title><?php echo $page_title; ?></title>
+    <meta name="description" content="<?php echo $page_description; ?>">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Main CSS -->
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/wishlist.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
 </head>
-<body>
-    <?php include '../includes/header.php'; ?>
+<body class="<?php echo $body_class; ?>">
 
-    <div class="wishlist-container">
-        <div class="container">
+<!-- Loading Screen -->
+<div class="loading" id="global-loading">
+    <div class="loader-container">
+        <div class="loader"></div>
+        <p>Loading StepStyle...</p>
+    </div>
+</div>
+
+<!-- Header -->
+<?php include '../components/header.php'; ?>
+
+<!-- Mobile Navigation -->
+<?php include '../components/navigation.php'; ?>
+
+<main class="main-content">
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../index.php">Home</a>
+            <i class="fas fa-chevron-right"></i>
+            <span>My Wishlist</span>
+        </nav>
+
+        <div class="wishlist-layout">
+            <!-- Wishlist Header -->
             <div class="wishlist-header">
-                <h1>My Wishlist</h1>
-                <div class="wishlist-stats">
-                    <span class="items-count"><?php echo count($wishlist_items); ?> items</span>
-                    <div class="wishlist-actions">
-                        <button class="btn btn-outline btn-share-wishlist">
-                            <i class="fas fa-share"></i>
-                            Share Wishlist
-                        </button>
-                        <button class="btn btn-outline btn-clear-all">
-                            <i class="fas fa-trash"></i>
-                            Clear All
-                        </button>
-                    </div>
+                <div class="header-content">
+                    <h1 class="page-title">My Wishlist</h1>
+                    <p class="wishlist-subtitle">Save your favorite items for later</p>
+                </div>
+                <div class="wishlist-actions">
+                    <button class="btn btn-outline" id="share-wishlist">
+                        <i class="fas fa-share-alt"></i>
+                        Share Wishlist
+                    </button>
+                    <?php if (!empty($wishlist_items)): ?>
+                    <button class="btn btn-outline" id="clear-wishlist">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <?php if (empty($wishlist_items)): ?>
-                <div class="empty-wishlist">
-                    <div class="empty-icon">
-                        <i class="far fa-heart"></i>
+            <!-- Wishlist Content -->
+            <div class="wishlist-content">
+                <?php if (!empty($wishlist_items)): ?>
+                    <div class="wishlist-stats">
+                        <div class="stat-item">
+                            <span class="stat-number"><?php echo $wishlist_count; ?></span>
+                            <span class="stat-label">Items</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">$<?php echo number_format(calculateWishlistTotal($wishlist_items), 2); ?></span>
+                            <span class="stat-label">Total Value</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number"><?php echo count(array_filter($wishlist_items, function($item) { return $item['on_sale']; })); ?></span>
+                            <span class="stat-label">On Sale</span>
+                        </div>
                     </div>
-                    <h2>Your wishlist is empty</h2>
-                    <p>Save your favorite items here for easy access later</p>
-                    <a href="../products/categories/sneakers.php" class="btn btn-primary">
-                        <i class="fas fa-shoe-prints"></i>
-                        Explore Products
-                    </a>
-                </div>
-            <?php else: ?>
-                <div class="wishlist-content">
+
+                    <div class="wishlist-filters">
+                        <div class="filter-group">
+                            <label for="sort-wishlist">Sort by:</label>
+                            <select id="sort-wishlist" class="filter-select">
+                                <option value="date-added">Date Added</option>
+                                <option value="price-low">Price: Low to High</option>
+                                <option value="price-high">Price: High to Low</option>
+                                <option value="name">Product Name</option>
+                                <option value="brand">Brand</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-brand">Filter by brand:</label>
+                            <select id="filter-brand" class="filter-select">
+                                <option value="all">All Brands</option>
+                                <option value="nike">Nike</option>
+                                <option value="adidas">Adidas</option>
+                                <option value="jordan">Jordan</option>
+                                <option value="puma">Puma</option>
+                                <option value="new-balance">New Balance</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="wishlist-items">
-                        <?php foreach ($wishlist_items as $item): 
-                            $discount = $item['original_price'] ? round((($item['original_price'] - $item['price']) / $item['original_price']) * 100) : 0;
-                        ?>
-                        <div class="wishlist-item" data-item-id="<?php echo $item['id']; ?>">
+                        <?php foreach ($wishlist_items as $item): ?>
+                        <div class="wishlist-item" data-product-id="<?php echo $item['id']; ?>">
                             <div class="item-image">
-                                <div class="image-placeholder">
-                                    <i class="fas fa-shoe-prints"></i>
-                                </div>
-                                <?php if($discount > 0): ?>
-                                <span class="discount-badge">-<?php echo $discount; ?>%</span>
-                                <?php endif; ?>
-                                <div class="item-actions">
-                                    <button class="btn-remove-wishlist" data-item-id="<?php echo $item['id']; ?>">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="item-details">
-                                <span class="item-brand"><?php echo $item['brand']; ?></span>
-                                <h3 class="item-name"><?php echo $item['name']; ?></h3>
-                                
-                                <div class="item-rating">
-                                    <div class="stars">
-                                        <?php for ($i = 1; $i <= 5; $i++): ?>
-                                        <i class="fas fa-star <?php echo $i <= floor($item['rating']) ? 'active' : ''; ?>"></i>
-                                        <?php endfor; ?>
-                                    </div>
-                                    <span class="rating-text">(<?php echo $item['review_count']; ?> reviews)</span>
-                                </div>
-
-                                <div class="item-options">
-                                    <div class="size-options">
-                                        <span class="option-label">Size:</span>
-                                        <select class="size-select">
-                                            <option value="">Select Size</option>
-                                            <?php
-                                            $sizes = explode('-', str_replace('US ', '', $item['size_range']));
-                                            for ($i = $sizes[0]; $i <= $sizes[1]; $i++):
-                                            ?>
-                                            <option value="<?php echo $i; ?>">US <?php echo $i; ?></option>
-                                            <?php endfor; ?>
-                                        </select>
-                                    </div>
-                                    <div class="color-options">
-                                        <span class="option-label">Color:</span>
-                                        <div class="color-selectors">
-                                            <?php foreach ($item['colors'] as $color): ?>
-                                            <label class="color-selector">
-                                                <input type="radio" name="color-<?php echo $item['id']; ?>" value="<?php echo $color; ?>">
-                                                <span class="color-dot" style="background-color: <?php echo getColorValue($color); ?>" title="<?php echo $color; ?>"></span>
-                                            </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="item-availability <?php echo $item['in_stock'] ? 'in-stock' : 'out-of-stock'; ?>">
-                                    <i class="fas <?php echo $item['in_stock'] ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
-                                    <span><?php echo $item['in_stock'] ? 'In Stock' : 'Out of Stock'; ?></span>
-                                </div>
-                            </div>
-
-                            <div class="item-pricing">
-                                <div class="price-container">
-                                    <?php if($item['original_price']): ?>
-                                        <span class="current-price"><?php echo formatPrice($item['price']); ?></span>
-                                        <span class="original-price"><?php echo formatPrice($item['original_price']); ?></span>
+                                <a href="../products/detail.php?id=<?php echo $item['id']; ?>">
+                                    <?php if (!empty($item['image_url'])): ?>
+                                        <img src="<?php echo $item['image_url']; ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
                                     <?php else: ?>
-                                        <span class="current-price"><?php echo formatPrice($item['price']); ?></span>
+                                        <div class="item-image-placeholder">
+                                            <i class="fas fa-shoe-prints"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                </a>
+                                <?php if ($item['on_sale']): ?>
+                                    <span class="sale-badge">SALE</span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="item-details">
+                                <div class="item-info">
+                                    <h3 class="item-name">
+                                        <a href="../products/detail.php?id=<?php echo $item['id']; ?>">
+                                            <?php echo htmlspecialchars($item['name']); ?>
+                                        </a>
+                                    </h3>
+                                    <p class="item-brand"><?php echo htmlspecialchars($item['brand']); ?></p>
+                                    <div class="item-rating">
+                                        <div class="stars">
+                                            <?php echo generateStarRating($item['rating']); ?>
+                                        </div>
+                                        <span class="rating-count">(<?php echo $item['review_count']; ?>)</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="item-price">
+                                    <span class="current-price">$<?php echo number_format($item['price'], 2); ?></span>
+                                    <?php if ($item['original_price'] > $item['price']): ?>
+                                        <span class="original-price">$<?php echo number_format($item['original_price'], 2); ?></span>
+                                        <span class="discount-percent">
+                                            Save <?php echo round((($item['original_price'] - $item['price']) / $item['original_price']) * 100); ?>%
+                                        </span>
                                     <?php endif; ?>
                                 </div>
                                 
-                                <div class="item-actions-main">
-                                    <button class="btn btn-primary btn-add-to-cart" data-product-id="<?php echo $item['product_id']; ?>">
+                                <div class="stock-status">
+                                    <?php if ($item['stock_quantity'] > 0): ?>
+                                        <?php if ($item['stock_quantity'] <= 10): ?>
+                                            <span class="low-stock">Only <?php echo $item['stock_quantity']; ?> left!</span>
+                                        <?php else: ?>
+                                            <span class="in-stock">In Stock</span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="out-of-stock">Out of Stock</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <div class="item-actions">
+                                <?php if ($item['stock_quantity'] > 0): ?>
+                                    <button class="btn btn-primary add-to-cart" data-product-id="<?php echo $item['id']; ?>">
                                         <i class="fas fa-shopping-cart"></i>
                                         Add to Cart
                                     </button>
-                                    <button class="btn btn-outline btn-move-to-cart" data-product-id="<?php echo $item['product_id']; ?>">
-                                        <i class="fas fa-arrow-right"></i>
-                                        Move to Cart
+                                <?php else: ?>
+                                    <button class="btn btn-secondary notify-me" data-product-id="<?php echo $item['id']; ?>">
+                                        <i class="fas fa-bell"></i>
+                                        Notify When Available
                                     </button>
-                                </div>
+                                <?php endif; ?>
+                                
+                                <button class="btn btn-outline remove-from-wishlist" data-product-id="<?php echo $item['id']; ?>">
+                                    <i class="fas fa-trash"></i>
+                                    Remove
+                                </button>
+                                
+                                <button class="btn btn-outline share-item" data-product-id="<?php echo $item['id']; ?>">
+                                    <i class="fas fa-share"></i>
+                                    Share
+                                </button>
+                            </div>
+                            
+                            <div class="item-meta">
+                                <span class="added-date">Added on <?php echo date('M j, Y', strtotime($item['date_added'])); ?></span>
                             </div>
                         </div>
                         <?php endforeach; ?>
                     </div>
-
-                    <div class="wishlist-sidebar">
-                        <div class="sidebar-card">
-                            <h3>Wishlist Summary</h3>
-                            <div class="summary-stats">
-                                <div class="stat">
-                                    <span class="stat-value"><?php echo count($wishlist_items); ?></span>
-                                    <span class="stat-label">Items</span>
-                                </div>
-                                <div class="stat">
-                                    <span class="stat-value">$<?php echo number_format(array_sum(array_column($wishlist_items, 'price')) / 100, 2); ?></span>
-                                    <span class="stat-label">Total Value</span>
-                                </div>
-                            </div>
-                            <button class="btn btn-primary btn-add-all-to-cart">
-                                <i class="fas fa-shopping-cart"></i>
-                                Add All to Cart
-                            </button>
+                <?php else: ?>
+                    <!-- Empty Wishlist State -->
+                    <div class="empty-wishlist">
+                        <div class="empty-wishlist-icon">
+                            <i class="far fa-heart"></i>
                         </div>
-
-                        <div class="sidebar-card">
-                            <h3>Price Drop Alerts</h3>
-                            <p>Get notified when items in your wishlist go on sale</p>
-                            <button class="btn btn-outline btn-enable-alerts">
-                                <i class="fas fa-bell"></i>
-                                Enable Alerts
-                            </button>
-                        </div>
-
-                        <div class="sidebar-card">
-                            <h3>Share Your Wishlist</h3>
-                            <p>Let friends and family know what you want</p>
-                            <div class="share-options">
-                                <button class="btn-share">
-                                    <i class="fab fa-facebook-f"></i>
-                                </button>
-                                <button class="btn-share">
-                                    <i class="fab fa-twitter"></i>
-                                </button>
-                                <button class="btn-share">
-                                    <i class="fab fa-whatsapp"></i>
-                                </button>
-                                <button class="btn-share">
-                                    <i class="fas fa-link"></i>
-                                </button>
-                            </div>
+                        <h2>Your wishlist is empty</h2>
+                        <p>Start saving your favorite items to keep track of them.</p>
+                        <div class="empty-actions">
+                            <a href="../products/categories.php" class="btn btn-primary">
+                                <i class="fas fa-shopping-bag"></i>
+                                Explore Products
+                            </a>
+                            <a href="../products/categories.php?filter=featured" class="btn btn-outline">
+                                <i class="fas fa-star"></i>
+                                View Featured
+                            </a>
                         </div>
                     </div>
-                </div>
+                <?php endif; ?>
+            </div>
 
-                <div class="wishlist-recommendations">
-                    <h3>You Might Also Like</h3>
-                    <div class="recommendation-grid">
-                        <!-- Recommended products would go here -->
-                        <div class="recommendation-item">
-                            <div class="rec-image">
-                                <i class="fas fa-shoe-prints"></i>
-                            </div>
-                            <div class="rec-info">
-                                <span class="rec-brand">Adidas</span>
-                                <span class="rec-name">Ultraboost 22</span>
-                                <span class="rec-price">$199.99</span>
-                            </div>
-                        </div>
-                        <div class="recommendation-item">
-                            <div class="rec-image">
-                                <i class="fas fa-shoe-prints"></i>
-                            </div>
-                            <div class="rec-info">
-                                <span class="rec-brand">Converse</span>
-                                <span class="rec-name">Chuck Taylor All Star</span>
-                                <span class="rec-price">$55.00</span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Wishlist Recommendations -->
+            <?php if (!empty($wishlist_items)): ?>
+            <div class="recommendations-section">
+                <h2 class="section-title">Based on Your Wishlist</h2>
+                <div class="products-grid">
+                    <?php
+                    $recommended_products = getWishlistRecommendations(4);
+                    foreach ($recommended_products as $product):
+                        include '../components/product-card.php';
+                    endforeach;
+                    ?>
                 </div>
+            </div>
             <?php endif; ?>
         </div>
     </div>
+</main>
 
-    <?php include '../includes/footer.php'; ?>
+<!-- Footer -->
+<?php include '../components/footer.php'; ?>
 
-    <script src="../assets/js/wishlist.js"></script>
+<!-- JavaScript -->
+<script src="../assets/js/main.js"></script>
+<script src="../assets/js/wishlist.js"></script>
+
 </body>
 </html>

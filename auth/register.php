@@ -1,105 +1,77 @@
 <?php
-session_start();
+// Start session and set base path
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Redirect if already logged in
+if (isset($_SESSION['user_id'])) {
+    header('Location: ../user/profile.php');
+    exit();
+}
+
+// Set page metadata
+$page_title = 'Create Account - StepStyle';
+$page_description = 'Join StepStyle to get access to exclusive deals, fast checkout, and personalized recommendations.';
+$body_class = 'auth-page register-page';
+
+// Include configuration
 require_once '../config/database.php';
 require_once '../config/functions.php';
 
-// Redirect if already logged in
-if (isLoggedIn()) {
-    redirect('../index.php');
-}
-
+// Process registration form
 $error = '';
 $success = '';
-
-// Handle form submission
-if ($_POST) {
-    $name = sanitize($_POST['name']);
-    $email = sanitize($_POST['email']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone'] ?? '');
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-    $agree_terms = isset($_POST['terms']);
-    $newsletter = isset($_POST['newsletter']);
+    $newsletter = isset($_POST['newsletter']) ? 1 : 0;
     
-    // Validate inputs
-    if (empty($name) || empty($email) || empty($password) || empty($confirm_password)) {
-        $error = "Please fill in all required fields";
-    } elseif (!validateEmail($email)) {
-        $error = "Please enter a valid email address";
-    } elseif (strlen($password) < 8) {
-        $error = "Password must be at least 8 characters long";
-    } elseif ($password !== $confirm_password) {
-        $error = "Passwords do not match";
-    } elseif (!$agree_terms) {
-        $error = "You must agree to the Terms of Service and Privacy Policy";
-    } else {
-        try {
-            $database = new Database();
-            $db = $database->getConnection();
-            
-            // Check if email already exists
-            $check_query = "SELECT id FROM users WHERE email = :email";
-            $check_stmt = $db->prepare($check_query);
-            $check_stmt->bindParam(':email', $email);
-            $check_stmt->execute();
-            
-            if ($check_stmt->rowCount() > 0) {
-                $error = "An account with this email already exists";
+    try {
+        // Validate inputs
+        if (empty($first_name) || empty($last_name) || empty($email) || empty($password)) {
+            $error = 'Please fill in all required fields.';
+        } elseif ($password !== $confirm_password) {
+            $error = 'Passwords do not match.';
+        } elseif (strlen($password) < 8) {
+            $error = 'Password must be at least 8 characters long.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Please enter a valid email address.';
+        } else {
+            // Check if user already exists
+            if (userExists($email)) {
+                $error = 'An account with this email already exists.';
             } else {
                 // Create new user
-                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $verification_token = bin2hex(random_bytes(32));
+                $user_id = registerUser([
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'password' => $password,
+                    'newsletter' => $newsletter
+                ]);
                 
-                $insert_query = "
-                    INSERT INTO users (name, email, password, verification_token, newsletter_subscribed, created_at) 
-                    VALUES (:name, :email, :password, :token, :newsletter, NOW())
-                ";
-                $insert_stmt = $db->prepare($insert_query);
-                $insert_stmt->bindParam(':name', $name);
-                $insert_stmt->bindParam(':email', $email);
-                $insert_stmt->bindParam(':password', $hashed_password);
-                $insert_stmt->bindParam(':token', $verification_token);
-                $insert_stmt->bindParam(':newsletter', $newsletter, PDO::PARAM_BOOL);
-                
-                if ($insert_stmt->execute()) {
-                    $user_id = $db->lastInsertId();
-                    
-                    // Send verification email (in production)
-                    // $this->sendVerificationEmail($email, $name, $verification_token);
-                    
-                    // Log registration
-                    $log_query = "INSERT INTO user_activity (user_id, activity_type, ip_address, user_agent) 
-                                 VALUES (:user_id, 'register', :ip, :ua)";
-                    $log_stmt = $db->prepare($log_query);
-                    $log_stmt->bindParam(':user_id', $user_id);
-                    $log_stmt->bindParam(':ip', $_SERVER['REMOTE_ADDR']);
-                    $log_stmt->bindParam(':ua', $_SERVER['HTTP_USER_AGENT']);
-                    $log_stmt->execute();
-                    
-                    // For demo purposes, auto-verify and login
-                    $update_query = "UPDATE users SET email_verified = TRUE, verification_token = NULL WHERE id = :id";
-                    $update_stmt = $db->prepare($update_query);
-                    $update_stmt->bindParam(':id', $user_id);
-                    $update_stmt->execute();
-                    
-                    // Auto login for demo
+                if ($user_id) {
+                    // Auto-login after registration
                     $_SESSION['user_id'] = $user_id;
-                    $_SESSION['user_name'] = $name;
                     $_SESSION['user_email'] = $email;
-                    $_SESSION['role'] = 'user';
-                    $_SESSION['avatar'] = '/assets/images/avatars/default.png';
-                    $_SESSION['logged_in'] = true;
+                    $_SESSION['user_name'] = $first_name . ' ' . $last_name;
+                    $_SESSION['user_role'] = 'customer';
                     
-                    $_SESSION['success'] = "Welcome to StepStyle, " . htmlspecialchars($name) . "! Your account has been created successfully.";
-                    redirect('../index.php');
-                    
+                    header('Location: ../index.php?registration=success');
+                    exit();
                 } else {
-                    $error = "Failed to create account. Please try again.";
+                    $error = 'Registration failed. Please try again.';
                 }
             }
-        } catch (Exception $e) {
-            error_log("Registration error: " . $e->getMessage());
-            $error = "An error occurred. Please try again.";
         }
+    } catch (Exception $e) {
+        $error = 'Registration failed. Please try again later.';
     }
 }
 ?>
@@ -109,266 +81,231 @@ if ($_POST) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account - StepStyle</title>
+    <title><?php echo $page_title; ?></title>
+    <meta name="description" content="<?php echo $page_description; ?>">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/auth.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
 </head>
-<body class="auth-page">
-    <div class="auth-background">
-        <div class="auth-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
+<body class="<?php echo $body_class; ?>">
+
+<!-- Loading Screen -->
+<div class="loading" id="global-loading">
+    <div class="loader-container">
+        <div class="loader"></div>
+        <p>Loading StepStyle...</p>
     </div>
+</div>
 
-    <div class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <a href="../index.php" class="auth-logo">
-                    <i class="fas fa-shoe-prints"></i>
-                    StepStyle
-                </a>
-                <h1>Create Account</h1>
-                <p>Join StepStyle for exclusive benefits and features</p>
-            </div>
+<!-- Header -->
+<?php include '../components/header.php'; ?>
 
-            <?php if ($error): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php echo $error; ?>
-                </div>
-            <?php endif; ?>
+<!-- Mobile Navigation -->
+<?php include '../components/navigation.php'; ?>
 
-            <form method="POST" class="auth-form" id="register-form">
-                <div class="form-group">
-                    <label for="name">Full Name <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-user"></i>
-                        <input type="text" id="name" name="name" value="<?php echo isset($_POST['name']) ? htmlspecialchars($_POST['name']) : ''; ?>" 
-                               required placeholder="Enter your full name" autocomplete="name">
+<main class="main-content">
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../index.php">Home</a>
+            <i class="fas fa-chevron-right"></i>
+            <span>Create Account</span>
+        </nav>
+
+        <div class="auth-layout">
+            <!-- Auth Content -->
+            <div class="auth-content">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h1 class="auth-title">Join StepStyle</h1>
+                        <p class="auth-subtitle">Create your account to start shopping</p>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="email">Email Address <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" id="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" 
-                               required placeholder="Enter your email" autocomplete="email">
+                    <?php if ($error): ?>
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <?php echo $error; ?>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="password" name="password" required 
-                               placeholder="Create a password" autocomplete="new-password">
-                        <button type="button" class="password-toggle" data-target="password">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                    <?php endif; ?>
+
+                    <?php if ($success): ?>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <?php echo $success; ?>
                     </div>
-                    <div class="password-strength">
-                        <div class="strength-bar">
-                            <div class="strength-fill" data-strength="0"></div>
+                    <?php endif; ?>
+
+                    <form class="auth-form" method="POST" id="register-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="first_name">First Name *</label>
+                                <div class="input-group">
+                                    <i class="fas fa-user input-icon"></i>
+                                    <input type="text" id="first_name" name="first_name" 
+                                           value="<?php echo htmlspecialchars($_POST['first_name'] ?? ''); ?>" 
+                                           placeholder="First name" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="last_name">Last Name *</label>
+                                <div class="input-group">
+                                    <i class="fas fa-user input-icon"></i>
+                                    <input type="text" id="last_name" name="last_name" 
+                                           value="<?php echo htmlspecialchars($_POST['last_name'] ?? ''); ?>" 
+                                           placeholder="Last name" required>
+                                </div>
+                            </div>
                         </div>
-                        <span class="strength-text">Password strength</span>
-                    </div>
-                    <div class="password-requirements">
-                        <small>Must be at least 8 characters long</small>
+
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <div class="input-group">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input type="email" id="email" name="email" 
+                                       value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" 
+                                       placeholder="Enter your email" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <div class="input-group">
+                                <i class="fas fa-phone input-icon"></i>
+                                <input type="tel" id="phone" name="phone" 
+                                       value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" 
+                                       placeholder="+1 (555) 123-4567">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password *</label>
+                            <div class="input-group">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password" id="password" name="password" placeholder="Create a password" required>
+                                <button type="button" class="password-toggle" id="toggle-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-fill" data-strength="0"></div>
+                                </div>
+                                <span class="strength-text">Password strength</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirm_password">Confirm Password *</label>
+                            <div class="input-group">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                            </div>
+                        </div>
+
+                        <div class="form-options">
+                            <div class="newsletter-opt">
+                                <input type="checkbox" id="newsletter" name="newsletter" <?php echo isset($_POST['newsletter']) ? 'checked' : 'checked'; ?>>
+                                <label for="newsletter">Send me exclusive offers and style tips</label>
+                            </div>
+                            <div class="terms-agree">
+                                <input type="checkbox" id="terms" name="terms" required>
+                                <label for="terms">I agree to the <a href="../terms.php">Terms of Service</a> and <a href="../privacy.php">Privacy Policy</a></label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block btn-large">
+                            <i class="fas fa-user-plus"></i>
+                            Create Account
+                        </button>
+
+                        <div class="auth-divider">
+                            <span>or sign up with</span>
+                        </div>
+
+                        <div class="social-auth">
+                            <button type="button" class="btn btn-social btn-google">
+                                <i class="fab fa-google"></i>
+                                Google
+                            </button>
+                            <button type="button" class="btn btn-social btn-facebook">
+                                <i class="fab fa-facebook-f"></i>
+                                Facebook
+                            </button>
+                            <button type="button" class="btn btn-social btn-apple">
+                                <i class="fab fa-apple"></i>
+                                Apple
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="auth-footer">
+                        <p>Already have an account? <a href="login.php" class="auth-link">Sign in here</a></p>
                     </div>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label for="confirm_password">Confirm Password <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="confirm_password" name="confirm_password" required 
-                               placeholder="Confirm your password" autocomplete="new-password">
+            <!-- Auth Visual -->
+            <div class="auth-visual">
+                <div class="visual-content">
+                    <div class="visual-icon">
+                        <i class="fas fa-crown"></i>
                     </div>
-                    <div class="password-match" id="password-match" style="display: none;">
-                        <small class="match-text"></small>
+                    <h2>Become a Style Insider</h2>
+                    <p>Join thousands of sneakerheads and get access to exclusive benefits.</p>
+                    
+                    <div class="benefits-list">
+                        <div class="benefit">
+                            <i class="fas fa-rocket"></i>
+                            <div class="benefit-content">
+                                <h4>Fast Checkout</h4>
+                                <p>Save your details for quicker purchases</p>
+                            </div>
+                        </div>
+                        <div class="benefit">
+                            <i class="fas fa-gem"></i>
+                            <div class="benefit-content">
+                                <h4>Early Access</h4>
+                                <p>Be the first to get new releases</p>
+                            </div>
+                        </div>
+                        <div class="benefit">
+                            <i class="fas fa-percentage"></i>
+                            <div class="benefit-content">
+                                <h4>Member Discounts</h4>
+                                <p>Exclusive deals and promotions</p>
+                            </div>
+                        </div>
+                        <div class="benefit">
+                            <i class="fas fa-heart"></i>
+                            <div class="benefit-content">
+                                <h4>Wishlist</h4>
+                                <p>Save and track your favorite items</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-options">
-                    <label class="checkbox">
-                        <input type="checkbox" name="terms" id="terms" required>
-                        <span class="checkmark"></span>
-                        I agree to the <a href="../terms.php" target="_blank">Terms of Service</a> and <a href="../privacy.php" target="_blank">Privacy Policy</a>
-                    </label>
-                </div>
-
-                <div class="form-options">
-                    <label class="checkbox">
-                        <input type="checkbox" name="newsletter" id="newsletter" checked>
-                        <span class="checkmark"></span>
-                        Subscribe to our newsletter for updates, new arrivals, and exclusive offers
-                    </label>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-auth" id="register-btn">
-                    <i class="fas fa-user-plus"></i>
-                    Create Account
-                </button>
-            </form>
-
-            <div class="auth-divider">
-                <span>Or continue with</span>
-            </div>
-
-            <div class="social-auth">
-                <button type="button" class="btn btn-social btn-google" id="google-register">
-                    <i class="fab fa-google"></i>
-                    Google
-                </button>
-                <button type="button" class="btn btn-social btn-facebook" id="facebook-register">
-                    <i class="fab fa-facebook-f"></i>
-                    Facebook
-                </button>
-            </div>
-
-            <div class="auth-footer">
-                <p>Already have an account? <a href="login.php" class="auth-link">Sign in here</a></p>
-            </div>
-        </div>
-
-        <div class="auth-features">
-            <div class="feature-card">
-                <i class="fas fa-gift"></i>
-                <h3>Welcome Offer</h3>
-                <p>Get 15% off your first order</p>
-            </div>
-            <div class="feature-card">
-                <i class="fas fa-star"></i>
-                <h3>Exclusive Deals</h3>
-                <p>Access to members-only sales</p>
-            </div>
-            <div class="feature-card">
-                <i class="fas fa-heart"></i>
-                <h3>Wishlist</h3>
-                <p>Save your favorite items</p>
-            </div>
-            <div class="feature-card">
-                <i class="fas fa-shipping-fast"></i>
-                <h3>Fast Shipping</h3>
-                <p>Free delivery on orders $50+</p>
             </div>
         </div>
     </div>
+</main>
 
-    <script src="../assets/js/auth.js"></script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const registerForm = document.getElementById('register-form');
-        const passwordInput = document.getElementById('password');
-        const confirmPasswordInput = document.getElementById('confirm_password');
-        const passwordMatch = document.getElementById('password-match');
-        const registerBtn = document.getElementById('register-btn');
-        
-        // Password strength checker
-        passwordInput.addEventListener('input', function() {
-            const password = this.value;
-            const strength = calculatePasswordStrength(password);
-            const strengthFill = document.querySelector('.strength-fill');
-            const strengthText = document.querySelector('.strength-text');
-            
-            strengthFill.setAttribute('data-strength', strength.score);
-            strengthFill.style.width = `${strength.score * 25}%`;
-            strengthFill.style.background = strength.color;
-            strengthText.textContent = strength.text;
-            strengthText.style.color = strength.color;
-        });
-        
-        // Password confirmation check
-        confirmPasswordInput.addEventListener('input', function() {
-            const password = passwordInput.value;
-            const confirmPassword = this.value;
-            
-            if (confirmPassword === '') {
-                passwordMatch.style.display = 'none';
-                return;
-            }
-            
-            passwordMatch.style.display = 'block';
-            
-            if (password === confirmPassword) {
-                passwordMatch.querySelector('.match-text').textContent = '✓ Passwords match';
-                passwordMatch.querySelector('.match-text').style.color = '#27ae60';
-            } else {
-                passwordMatch.querySelector('.match-text').textContent = '✗ Passwords do not match';
-                passwordMatch.querySelector('.match-text').style.color = '#e74c3c';
-            }
-        });
-        
-        // Form submission handling
-        registerForm.addEventListener('submit', function(e) {
-            const password = passwordInput.value;
-            const confirmPassword = confirmPasswordInput.value;
-            const termsChecked = document.getElementById('terms').checked;
-            
-            if (!termsChecked) {
-                e.preventDefault();
-                alert('Please agree to the Terms of Service and Privacy Policy');
-                return;
-            }
-            
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                alert('Passwords do not match');
-                return;
-            }
-            
-            if (password.length < 8) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters long');
-                return;
-            }
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            
-            // Show loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-            submitBtn.disabled = true;
-        });
-        
-        // Social registration buttons
-        document.getElementById('google-register').addEventListener('click', function() {
-            alert('Google registration integration would be implemented here');
-        });
-        
-        document.getElementById('facebook-register').addEventListener('click', function() {
-            alert('Facebook registration integration would be implemented here');
-        });
-        
-        // Password strength calculation
-        function calculatePasswordStrength(password) {
-            let score = 0;
-            
-            // Length check
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            
-            // Character variety checks
-            if (/[a-z]/.test(password)) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/\d/.test(password)) score++;
-            if (/[^a-zA-Z\d]/.test(password)) score++;
-            
-            const strengthMap = {
-                0: { text: 'Very Weak', color: '#e74c3c' },
-                1: { text: 'Weak', color: '#e74c3c' },
-                2: { text: 'Fair', color: '#f39c12' },
-                3: { text: 'Good', color: '#3498db' },
-                4: { text: 'Strong', color: '#27ae60' },
-                5: { text: 'Very Strong', color: '#27ae60' },
-                6: { text: 'Excellent', color: '#2ecc71' }
-            };
-            
-            return strengthMap[score] || strengthMap[0];
-        }
-    });
-    </script>
+<!-- Footer -->
+<?php include '../components/footer.php'; ?>
+
+<!-- JavaScript -->
+<script src="../assets/js/main.js"></script>
+<script src="../assets/js/auth.js"></script>
+
 </body>
 </html>

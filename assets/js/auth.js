@@ -1,355 +1,230 @@
-// Authentication JavaScript for StepStyle
+// Auth Page Functionality
+class AuthManager {
+    constructor() {
+        this.init();
+    }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeAuthPage();
-});
+    init() {
+        this.setupEventListeners();
+        this.setupPasswordToggle();
+        this.setupPasswordStrength();
+        this.setupFormValidation();
+    }
 
-function initializeAuthPage() {
-    // Password visibility toggle
-    initializePasswordToggle();
-    
-    // Form validation
-    initializeFormValidation();
-    
-    // Social login buttons
-    initializeSocialLogin();
-    
-    // Password strength meter
-    initializePasswordStrength();
-    
-    // Auto-focus first input
-    autoFocusFirstInput();
-    
-    // Form submission handling
-    initializeFormSubmission();
-}
-
-function initializePasswordToggle() {
-    const toggleButtons = document.querySelectorAll('.password-toggle');
-    
-    toggleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const input = this.parentElement.querySelector('input');
-            const icon = this.querySelector('i');
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
+    setupEventListeners() {
+        // Real-time form validation
+        document.querySelectorAll('input[required]').forEach(input => {
+            input.addEventListener('blur', this.validateField.bind(this));
+            input.addEventListener('input', this.validateField.bind(this));
         });
-    });
-}
 
-function initializeFormValidation() {
-    const forms = document.querySelectorAll('.auth-form');
-    
-    forms.forEach(form => {
-        const inputs = form.querySelectorAll('input[required]');
+        // Confirm password validation
+        const confirmPassword = document.getElementById('confirm_password');
+        if (confirmPassword) {
+            confirmPassword.addEventListener('input', this.validatePasswordMatch.bind(this));
+        }
+
+        // Terms agreement validation
+        const termsCheckbox = document.getElementById('terms');
+        if (termsCheckbox) {
+            termsCheckbox.addEventListener('change', this.validateForm.bind(this));
+        }
+    }
+
+    setupPasswordToggle() {
+        const toggleButtons = document.querySelectorAll('.password-toggle');
         
-        inputs.forEach(input => {
-            // Real-time validation
-            input.addEventListener('blur', function() {
-                validateField(this);
-            });
-            
-            input.addEventListener('input', function() {
-                clearFieldError(this);
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.closest('.input-group').querySelector('input');
+                const icon = this.querySelector('i');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                    this.setAttribute('aria-label', 'Hide password');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                    this.setAttribute('aria-label', 'Show password');
+                }
             });
         });
-        
-        // Email validation
-        const emailInput = form.querySelector('input[type="email"]');
-        if (emailInput) {
-            emailInput.addEventListener('blur', function() {
-                validateEmail(this);
-            });
-        }
-        
-        // Password confirmation
-        const passwordInput = form.querySelector('input[name="password"]');
-        const confirmInput = form.querySelector('input[name="confirm_password"]');
-        
-        if (passwordInput && confirmInput) {
-            confirmInput.addEventListener('blur', function() {
-                validatePasswordMatch(passwordInput, confirmInput);
-            });
-        }
-    });
-}
-
-function validateField(field) {
-    const value = field.value.trim();
-    let isValid = true;
-    let message = '';
-    
-    if (!value) {
-        isValid = false;
-        message = 'This field is required';
-    } else {
-        switch (field.type) {
-            case 'email':
-                if (!isValidEmail(value)) {
-                    isValid = false;
-                    message = 'Please enter a valid email address';
-                }
-                break;
-            case 'tel':
-                if (!isValidPhone(value)) {
-                    isValid = false;
-                    message = 'Please enter a valid phone number';
-                }
-                break;
-        }
     }
-    
-    if (isValid) {
-        showFieldSuccess(field);
-    } else {
-        showFieldError(field, message);
-    }
-    
-    return isValid;
-}
 
-function validateEmail(field) {
-    const value = field.value.trim();
-    
-    if (value && !isValidEmail(value)) {
-        showFieldError(field, 'Please enter a valid email address');
-        return false;
-    }
-    
-    return true;
-}
+    setupPasswordStrength() {
+        const passwordInput = document.getElementById('password');
+        if (!passwordInput) return;
 
-function validatePasswordMatch(passwordField, confirmField) {
-    if (passwordField.value && confirmField.value && passwordField.value !== confirmField.value) {
-        showFieldError(confirmField, 'Passwords do not match');
-        return false;
-    }
-    
-    return true;
-}
+        const strengthFill = document.querySelector('.strength-fill');
+        const strengthText = document.querySelector('.strength-text');
 
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-function isValidPhone(phone) {
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
-}
-
-function showFieldError(field, message) {
-    clearFieldError(field);
-    
-    field.classList.add('error');
-    field.classList.remove('success');
-    
-    const errorElement = document.createElement('div');
-    errorElement.className = 'field-error';
-    errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-    
-    field.parentElement.appendChild(errorElement);
-}
-
-function showFieldSuccess(field) {
-    clearFieldError(field);
-    
-    field.classList.remove('error');
-    field.classList.add('success');
-}
-
-function clearFieldError(field) {
-    field.classList.remove('error', 'success');
-    
-    const existingError = field.parentElement.querySelector('.field-error');
-    if (existingError) {
-        existingError.remove();
-    }
-}
-
-function initializePasswordStrength() {
-    const passwordInput = document.querySelector('input[name="password"]');
-    const strengthFill = document.querySelector('.strength-fill');
-    const strengthText = document.querySelector('.strength-text');
-    
-    if (passwordInput && strengthFill) {
         passwordInput.addEventListener('input', function() {
             const password = this.value;
-            const strength = calculatePasswordStrength(password);
+            const strength = this.calculatePasswordStrength(password);
             
-            strengthFill.setAttribute('data-strength', strength.score);
-            strengthFill.style.width = `${strength.score * 25}%`;
-            strengthFill.style.background = strength.color;
-            
-            if (strengthText) {
-                strengthText.textContent = strength.text;
+            strengthFill.setAttribute('data-strength', strength.level);
+            strengthText.textContent = strength.text;
+            strengthText.className = 'strength-text ' + strength.className;
+        });
+
+        // Add method to input element
+        passwordInput.calculatePasswordStrength = function(password) {
+            let strength = 0;
+            let text = 'Password strength';
+            let className = '';
+
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+            if (password.match(/\d/)) strength++;
+            if (password.match(/[^a-zA-Z\d]/)) strength++;
+
+            switch (strength) {
+                case 0:
+                    text = 'Password strength';
+                    className = '';
+                    break;
+                case 1:
+                    text = 'Weak';
+                    className = 'weak';
+                    break;
+                case 2:
+                    text = 'Fair';
+                    className = 'fair';
+                    break;
+                case 3:
+                    text = 'Good';
+                    className = 'good';
+                    break;
+                case 4:
+                    text = 'Strong';
+                    className = 'strong';
+                    break;
             }
-        });
+
+            return { level: strength, text: text, className: className };
+        };
     }
-}
 
-function calculatePasswordStrength(password) {
-    let score = 0;
-    
-    if (password.length >= 8) score++;
-    if (password.match(/[a-z]/) && password.match(/[A-Z]/)) score++;
-    if (password.match(/\d/)) score++;
-    if (password.match(/[^a-zA-Z\d]/)) score++;
-    
-    const strengthMap = {
-        0: { text: 'Very Weak', color: '#e74c3c' },
-        1: { text: 'Weak', color: '#e74c3c' },
-        2: { text: 'Fair', color: '#f39c12' },
-        3: { text: 'Good', color: '#3498db' },
-        4: { text: 'Strong', color: '#27ae60' }
-    };
-    
-    return {
-        score: score,
-        text: strengthMap[score].text,
-        color: strengthMap[score].color
-    };
-}
-
-function initializeSocialLogin() {
-    const socialButtons = document.querySelectorAll('.btn-social');
-    
-    socialButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            const provider = this.classList.contains('btn-google') ? 'Google' : 
-                           this.classList.contains('btn-facebook') ? 'Facebook' : 'Social';
-            
-            // Show loading state
-            const originalText = this.innerHTML;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-            this.disabled = true;
-            
-            // Simulate social login
-            setTimeout(() => {
-                this.innerHTML = originalText;
-                this.disabled = false;
-                
-                window.StepStyle.showNotification(`🔐 ${provider} login coming soon!`, 'info');
-            }, 2000);
-        });
-    });
-}
-
-function autoFocusFirstInput() {
-    const firstInput = document.querySelector('.auth-form input');
-    if (firstInput) {
-        setTimeout(() => firstInput.focus(), 500);
-    }
-}
-
-function initializeFormSubmission() {
-    const forms = document.querySelectorAll('.auth-form');
-    
-    forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Validate all fields
-            const inputs = this.querySelectorAll('input[required]');
-            let isValid = true;
-            
-            inputs.forEach(input => {
-                if (!validateField(input)) {
-                    isValid = false;
+    setupFormValidation() {
+        const forms = document.querySelectorAll('.auth-form');
+        
+        forms.forEach(form => {
+            form.addEventListener('submit', function(event) {
+                if (!this.validateForm()) {
+                    event.preventDefault();
+                    this.showFormErrors();
                 }
             });
-            
-            // Special validations
-            const emailInput = this.querySelector('input[type="email"]');
-            if (emailInput && !validateEmail(emailInput)) {
-                isValid = false;
-            }
-            
-            const passwordInput = this.querySelector('input[name="password"]');
-            const confirmInput = this.querySelector('input[name="confirm_password"]');
-            if (passwordInput && confirmInput && !validatePasswordMatch(passwordInput, confirmInput)) {
-                isValid = false;
-            }
-            
-            if (!isValid) {
-                window.StepStyle.showNotification('❌ Please fix the errors in the form', 'error');
+        });
+    }
+
+    validateField(event) {
+        const field = event.target;
+        const formGroup = field.closest('.form-group');
+        
+        // Remove previous validation states
+        formGroup.classList.remove('valid', 'invalid');
+        
+        if (field.value.trim() === '') {
+            if (field.hasAttribute('required') && field === document.activeElement) {
+                // Don't show error while user is typing
                 return;
             }
-            
-            // Show loading state
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.innerHTML;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            submitButton.disabled = true;
-            
-            // Simulate form submission
-            setTimeout(() => {
-                // In a real application, you would submit the form here
-                // For demo purposes, we'll just show a success message
-                
-                if (form.closest('.auth-card').querySelector('h1').textContent.includes('Create')) {
-                    window.StepStyle.showNotification('🎉 Account created successfully! Redirecting...', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'login.php';
-                    }, 2000);
-                } else {
-                    // Login form - submit normally
-                    form.submit();
-                }
-            }, 2000);
+            formGroup.classList.add('invalid');
+            return false;
+        }
+        
+        // Email validation
+        if (field.type === 'email') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(field.value)) {
+                formGroup.classList.add('invalid');
+                return false;
+            }
+        }
+        
+        // Phone validation (basic)
+        if (field.type === 'tel' && field.value.trim() !== '') {
+            const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+            const cleanPhone = field.value.replace(/[^\d+]/g, '');
+            if (!phoneRegex.test(cleanPhone)) {
+                formGroup.classList.add('invalid');
+                return false;
+            }
+        }
+        
+        formGroup.classList.add('valid');
+        return true;
+    }
+
+    validatePasswordMatch() {
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+        const confirmGroup = confirmPassword.closest('.form-group');
+        
+        if (!password || !confirmPassword) return;
+        
+        confirmGroup.classList.remove('valid', 'invalid');
+        
+        if (confirmPassword.value.trim() === '') {
+            return;
+        }
+        
+        if (password.value !== confirmPassword.value) {
+            confirmGroup.classList.add('invalid');
+            return false;
+        } else {
+            confirmGroup.classList.add('valid');
+            return true;
+        }
+    }
+
+    validateForm() {
+        let isValid = true;
+        const form = document.querySelector('.auth-form');
+        
+        // Validate all required fields
+        const requiredFields = form.querySelectorAll('input[required]');
+        requiredFields.forEach(field => {
+            if (!this.validateField({ target: field })) {
+                isValid = false;
+            }
         });
-    });
+        
+        // Validate password match for registration
+        if (form.id === 'register-form') {
+            if (!this.validatePasswordMatch()) {
+                isValid = false;
+            }
+            
+            // Validate terms agreement
+            const termsCheckbox = document.getElementById('terms');
+            const termsGroup = termsCheckbox.closest('.form-options');
+            
+            termsGroup.classList.remove('invalid');
+            if (!termsCheckbox.checked) {
+                termsGroup.classList.add('invalid');
+                isValid = false;
+            }
+        }
+        
+        return isValid;
+    }
+
+    showFormErrors() {
+        const firstInvalidField = document.querySelector('.invalid input');
+        if (firstInvalidField) {
+            firstInvalidField.focus();
+        }
+        
+        window.StepStyle.showNotification('Please check the form for errors.', 'error');
+    }
 }
 
-// Add CSS for form validation
-const authStyles = document.createElement('style');
-authStyles.textContent = `
-    .input-with-icon input.error {
-        border-color: #e74c3c;
-        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
-    }
-    
-    .input-with-icon input.success {
-        border-color: #27ae60;
-        box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
-    }
-    
-    .field-error {
-        color: #e74c3c;
-        font-size: 0.85rem;
-        margin-top: 5px;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .field-error i {
-        font-size: 0.8rem;
-    }
-    
-    .btn-social:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
-    }
-    
-    .shake {
-        animation: shake 0.5s ease-in-out;
-    }
-`;
-document.head.appendChild(authStyles);
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    new AuthManager();
+});
