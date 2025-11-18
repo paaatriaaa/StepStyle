@@ -14,7 +14,8 @@ require_once '../config/database.php';
 require_once '../config/functions.php';
 
 // Get wishlist items
-$wishlist_items = getWishlistItems();
+$user_id = $_SESSION['user_id'] ?? 0;
+$wishlist_items = getWishlistItems($user_id);
 $wishlist_count = count($wishlist_items);
 ?>
 

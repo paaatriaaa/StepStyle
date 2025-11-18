@@ -13,17 +13,40 @@ $body_class = 'checkout-page';
 require_once '../config/database.php';
 require_once '../config/functions.php';
 
-// Check if cart is empty
+// Check if user is logged in
+if (!isLoggedIn()) {
+    $_SESSION['error'] = 'Please log in to checkout.';
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+// Check if cart is empty - PERBAIKAN: tidak perlu parameter
 $cart_items = getCartItems();
 if (empty($cart_items)) {
     header('Location: cart.php');
     exit();
 }
 
-// Get checkout data
-$cart_total = calculateCartTotal($cart_items);
+// Get checkout data - PERBAIKAN: tidak perlu parameter
+$cart_total = calculateCartTotal();
 $user_data = getCurrentUser();
 $shipping_methods = getShippingMethods();
+
+// Set default user data jika tidak ada
+if (empty($user_data)) {
+    $user_data = [
+        'email' => $_SESSION['user_email'] ?? '',
+        'first_name' => $_SESSION['first_name'] ?? '',
+        'last_name' => $_SESSION['last_name'] ?? '',
+        'phone' => '',
+        'address' => '',
+        'city' => '',
+        'state' => '',
+        'zip_code' => ''
+    ];
+}
+
+$user_data['full_name'] = $user_data['first_name'] . ' ' . $user_data['last_name'];
 ?>
 
 <!DOCTYPE html>
@@ -97,7 +120,7 @@ $shipping_methods = getShippingMethods();
             <div class="checkout-content">
                 <!-- Checkout Form -->
                 <div class="checkout-form-section">
-                    <form id="checkout-form" class="checkout-form">
+                    <form id="checkout-form" class="checkout-form" action="process-checkout.php" method="POST">
                         <!-- Shipping Information -->
                         <section class="form-section active" id="shipping-section">
                             <h2 class="section-title">Shipping Information</h2>
@@ -214,17 +237,13 @@ $shipping_methods = getShippingMethods();
                                         <i class="fab fa-paypal"></i>
                                         PayPal
                                     </button>
-                                    <button type="button" class="payment-tab" data-method="applepay">
-                                        <i class="fab fa-apple-pay"></i>
-                                        Apple Pay
-                                    </button>
                                 </div>
 
                                 <!-- Credit Card Form -->
                                 <div class="payment-form active" id="card-form">
                                     <div class="form-group">
                                         <label for="card-number">Card Number *</label>
-                                        <input type="text" id="card-number" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19">
+                                        <input type="text" id="card-number" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19" required>
                                         <div class="card-icons">
                                             <i class="fab fa-cc-visa"></i>
                                             <i class="fab fa-cc-mastercard"></i>
@@ -236,18 +255,18 @@ $shipping_methods = getShippingMethods();
                                     <div class="form-grid">
                                         <div class="form-group">
                                             <label for="card-expiry">Expiry Date *</label>
-                                            <input type="text" id="card-expiry" name="card_expiry" placeholder="MM/YY" maxlength="5">
+                                            <input type="text" id="card-expiry" name="card_expiry" placeholder="MM/YY" maxlength="5" required>
                                         </div>
                                         
                                         <div class="form-group">
                                             <label for="card-cvc">CVC *</label>
-                                            <input type="text" id="card-cvc" name="card_cvc" placeholder="123" maxlength="4">
+                                            <input type="text" id="card-cvc" name="card_cvc" placeholder="123" maxlength="4" required>
                                         </div>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="card-name">Name on Card *</label>
-                                        <input type="text" id="card-name" name="card_name">
+                                        <input type="text" id="card-name" name="card_name" required>
                                     </div>
                                 </div>
 
@@ -261,57 +280,100 @@ $shipping_methods = getShippingMethods();
                                         </button>
                                     </div>
                                 </div>
-
-                                <!-- Apple Pay Form -->
-                                <div class="payment-form" id="applepay-form">
-                                    <div class="applepay-info">
-                                        <p>Complete your purchase quickly and securely with Apple Pay.</p>
-                                        <button type="button" class="btn btn-applepay">
-                                            <i class="fab fa-apple-pay"></i>
-                                            Pay with Apple Pay
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Billing Address -->
-                            <div class="billing-address">
-                                <div class="form-check">
-                                    <input type="checkbox" id="same-as-shipping" name="same_as_shipping" checked>
-                                    <label for="same-as-shipping">Billing address same as shipping address</label>
-                                </div>
-
-                                <div id="billing-fields" style="display: none;">
-                                    <h3 class="section-subtitle">Billing Address</h3>
-                                    <div class="form-group">
-                                        <label for="billing-address">Street Address</label>
-                                        <input type="text" id="billing-address" name="billing_address">
-                                    </div>
-                                    
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="billing-city">City</label>
-                                            <input type="text" id="billing-city" name="billing_city">
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="billing-state">State</label>
-                                            <select id="billing-state" name="billing_state">
-                                                <option value="">Select State</option>
-                                                <option value="CA">California</option>
-                                                <option value="NY">New York</option>
-                                                <option value="TX">Texas</option>
-                                                <option value="FL">Florida</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="billing-zip">ZIP Code</label>
-                                            <input type="text" id="billing-zip" name="billing_zip">
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             <div class="form-actions">
-                                <button type="button" class="btn btn-out
+                                <button type="button" class="btn btn-outline prev-step" data-prev="shipping">
+                                    <i class="fas fa-arrow-left"></i>
+                                    Back to Shipping
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-lock"></i>
+                                    Complete Order
+                                </button>
+                            </div>
+                        </section>
+                    </form>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary-section">
+                    <div class="order-summary">
+                        <h3 class="summary-title">Order Summary</h3>
+                        
+                        <div class="order-items">
+                            <?php foreach ($cart_items as $item): ?>
+                            <div class="order-item">
+                                <div class="item-image">
+                                    <?php if (!empty($item['image_url'])): ?>
+                                        <img src="<?php echo $item['image_url']; ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                                    <?php else: ?>
+                                        <div class="item-image-placeholder">
+                                            <i class="fas fa-shoe-prints"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="item-details">
+                                    <h4 class="item-name"><?php echo htmlspecialchars($item['name']); ?></h4>
+                                    <p class="item-brand"><?php echo htmlspecialchars($item['brand']); ?></p>
+                                    <p class="item-quantity">Qty: <?php echo $item['quantity']; ?></p>
+                                </div>
+                                <div class="item-price">
+                                    $<?php echo number_format($item['price'] * $item['quantity'], 2); ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        
+                        <div class="summary-details">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span>$<?php echo number_format($cart_total['subtotal'], 2); ?></span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span>Shipping</span>
+                                <span id="summary-shipping">
+                                    <?php if ($cart_total['shipping'] == 0): ?>
+                                        FREE
+                                    <?php else: ?>
+                                        $<?php echo number_format($cart_total['shipping'], 2); ?>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span>Tax</span>
+                                <span>$<?php echo number_format($cart_total['tax'], 2); ?></span>
+                            </div>
+                            
+                            <?php if ($cart_total['discount'] > 0): ?>
+                            <div class="summary-row discount">
+                                <span>Discount</span>
+                                <span class="discount-amount">-$<?php echo number_format($cart_total['discount'], 2); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="summary-divider"></div>
+                            
+                            <div class="summary-row total">
+                                <span><strong>Total</strong></span>
+                                <span><strong id="summary-total">$<?php echo number_format($cart_total['total'], 2); ?></strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<?php include '../components/footer.php'; ?>
+
+<!-- JavaScript -->
+<script src="../assets/js/main.js"></script>
+<script src="../assets/js/checkout.js"></script>
+
+</body>
+</html>

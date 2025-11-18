@@ -893,4 +893,103 @@ document.addEventListener('DOMContentLoaded', () => {
 // Fallback for DOM already loaded
 if (document.readyState !== 'loading') {
     window.StepStyle = new StepStyle();
+    // main.js - General image handling functions
+
+/**
+ * Handle product image loading and errors
+ */
+function handleProductImages() {
+    const productImages = document.querySelectorAll('.product-image-main');
+    
+    productImages.forEach(img => {
+        // Check if image is already loaded
+        if (img.complete) {
+            if (img.naturalHeight === 0) {
+                // Image failed to load
+                showImageFallback(img);
+            }
+        } else {
+            img.addEventListener('load', function() {
+                console.log('Image loaded successfully:', this.src);
+            });
+            
+            img.addEventListener('error', function() {
+                console.log('Image failed to load:', this.src);
+                showImageFallback(this);
+            });
+        }
+    });
+    
+    // Force check all images after page load
+    setTimeout(() => {
+        productImages.forEach(img => {
+            if (img.naturalHeight === 0 && img.style.display !== 'none') {
+                showImageFallback(img);
+            }
+        });
+    }, 1000);
+}
+
+/**
+ * Show fallback placeholder when image fails to load
+ */
+function showImageFallback(imgElement) {
+    imgElement.style.display = 'none';
+    const placeholder = imgElement.nextElementSibling;
+    if (placeholder && placeholder.classList.contains('product-image-placeholder')) {
+        placeholder.style.display = 'flex';
+    }
+}
+
+/**
+ * Initialize all image handlers
+ */
+function initImageHandlers() {
+    handleProductImages();
+    handleBrandLogos();
+}
+
+/**
+ * Handle brand logo images
+ */
+function handleBrandLogos() {
+    const brandLogos = document.querySelectorAll('.brand-logo-img');
+    
+    brandLogos.forEach(logo => {
+        if (logo.complete) {
+            if (logo.naturalHeight === 0) {
+                showBrandFallback(logo);
+            }
+        } else {
+            logo.addEventListener('error', function() {
+                showBrandFallback(this);
+            });
+        }
+    });
+}
+
+/**
+ * Show brand logo fallback
+ */
+function showBrandFallback(logoElement) {
+    logoElement.style.display = 'none';
+    const fallback = logoElement.nextElementSibling;
+    if (fallback && fallback.classList.contains('logo-fallback')) {
+        fallback.style.display = 'flex';
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initImageHandlers();
+});
+
+// Export functions for use in other files (if needed)
+window.ImageHandlers = {
+    handleProductImages,
+    showImageFallback,
+    handleBrandLogos,
+    showBrandFallback
+};
+
 }

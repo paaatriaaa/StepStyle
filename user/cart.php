@@ -13,9 +13,18 @@ $body_class = 'cart-page';
 require_once '../config/database.php';
 require_once '../config/functions.php';
 
-// Get cart items
-$cart_items = getCartItems();
-$cart_total = calculateCartTotal($cart_items);
+// Check if user is logged in
+if (!isLoggedIn()) {
+    $_SESSION['error'] = 'Please log in to view your cart.';
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// PERBAIKAN: Tambahkan parameter $user_id ke semua fungsi
+$cart_items = getCartItems($user_id);
+$cart_total = calculateCartTotal($user_id);
 $cart_count = count($cart_items);
 ?>
 
@@ -35,10 +44,494 @@ $cart_count = count($cart_items);
     
     <!-- Main CSS -->
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/cart.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
+    
+    <style>
+        /* Cart Styles */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 2rem 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .breadcrumb a {
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            color: #3b82f6;
+        }
+        
+        .cart-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+        
+        .cart-subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+        
+        .cart-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        
+        .cart-items-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .items-count {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .continue-shopping {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .continue-shopping:hover {
+            text-decoration: underline;
+        }
+        
+        .cart-item {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: white;
+        }
+        
+        .item-image img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+        
+        .item-image-placeholder {
+            width: 100%;
+            height: 120px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 2rem;
+        }
+        
+        .item-details {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            gap: 1rem;
+            align-items: start;
+        }
+        
+        .item-info h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .item-info a {
+            color: #1f2937;
+            text-decoration: none;
+        }
+        
+        .item-info a:hover {
+            color: #3b82f6;
+        }
+        
+        .item-brand {
+            color: #6b7280;
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .item-price {
+            text-align: center;
+        }
+        
+        .current-price {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1f2937;
+            display: block;
+        }
+        
+        .original-price {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            text-decoration: line-through;
+            display: block;
+        }
+        
+        .item-quantity {
+            text-align: center;
+        }
+        
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .quantity-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .quantity-btn:hover {
+            background: #f9fafb;
+        }
+        
+        .quantity-input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .item-total {
+            text-align: center;
+        }
+        
+        .total-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+        
+        .total-price {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1f2937;
+        }
+        
+        .item-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #6b7280;
+        }
+        
+        .action-btn:hover {
+            background: #f9fafb;
+        }
+        
+        .cart-summary {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            position: sticky;
+            top: 2rem;
+        }
+        
+        .summary-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+        }
+        
+        .summary-details {
+            margin-bottom: 1.5rem;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .summary-row.total {
+            border-bottom: none;
+            font-size: 1.1rem;
+            padding-top: 1rem;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .discount-amount {
+            color: #10b981;
+        }
+        
+        .shipping-notice {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: #f0f9ff;
+            border-radius: 6px;
+            border: 1px solid #bae6fd;
+        }
+        
+        .shipping-progress .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+        
+        .free-shipping-achieved {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #10b981;
+            font-weight: 500;
+        }
+        
+        .checkout-actions {
+            margin: 1.5rem 0;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-block {
+            width: 100%;
+        }
+        
+        .btn-large {
+            padding: 15px 24px;
+            font-size: 1.1rem;
+        }
+        
+        .payment-methods {
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .payment-icons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 1.5rem;
+            color: #6b7280;
+        }
+        
+        .security-notice {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        
+        .trust-badges {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .trust-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .trust-badge i {
+            color: #3b82f6;
+            font-size: 1.25rem;
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .empty-cart-icon {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+        
+        .empty-cart h2 {
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        
+        .empty-cart p {
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+        
+        .recently-viewed-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .product-title {
+            font-size: 0.9rem;
+            margin: 0 0 0.25rem;
+            font-weight: 600;
+        }
+        
+        .product-brand {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin: 0 0 0.5rem;
+        }
+        
+        .product-price {
+            font-weight: bold;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .cart-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-details {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .item-price, .item-quantity, .item-total {
+                text-align: left;
+            }
+            
+            .item-actions {
+                flex-direction: row;
+                justify-content: flex-start;
+            }
+        }
+    </style>
 </head>
 <body class="<?php echo $body_class; ?>">
 
@@ -105,13 +598,11 @@ $cart_count = count($cart_items);
                                             </a>
                                         </h3>
                                         <p class="item-brand"><?php echo htmlspecialchars($item['brand']); ?></p>
-                                        <p class="item-size">Size: <?php echo $item['size']; ?></p>
-                                        <p class="item-color">Color: <?php echo $item['color']; ?></p>
                                     </div>
                                     
                                     <div class="item-price">
                                         <span class="current-price">$<?php echo number_format($item['price'], 2); ?></span>
-                                        <?php if ($item['original_price'] > $item['price']): ?>
+                                        <?php if (isset($item['original_price']) && $item['original_price'] > $item['price']): ?>
                                             <span class="original-price">$<?php echo number_format($item['original_price'], 2); ?></span>
                                         <?php endif; ?>
                                     </div>
@@ -119,7 +610,7 @@ $cart_count = count($cart_items);
                                     <div class="item-quantity">
                                         <label for="quantity-<?php echo $item['id']; ?>">Qty:</label>
                                         <div class="quantity-selector">
-                                            <button class="quantity-btn minus" data-action="decrease">
+                                            <button class="quantity-btn minus" data-action="decrease" data-product-id="<?php echo $item['id']; ?>">
                                                 <i class="fas fa-minus"></i>
                                             </button>
                                             <input type="number" 
@@ -129,7 +620,7 @@ $cart_count = count($cart_items);
                                                    min="1" 
                                                    max="<?php echo $item['stock_quantity']; ?>"
                                                    data-product-id="<?php echo $item['id']; ?>">
-                                            <button class="quantity-btn plus" data-action="increase">
+                                            <button class="quantity-btn plus" data-action="increase" data-product-id="<?php echo $item['id']; ?>">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </div>
@@ -280,7 +771,18 @@ $cart_count = count($cart_items);
                     <?php
                     $recommended_products = getRecommendedProducts(4);
                     foreach ($recommended_products as $product):
-                        include '../components/product-card.php';
+                        ?>
+                        <div class="product-card">
+                            <div class="product-image">
+                                <img src="<?php echo $product['image_url']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-title"><?php echo htmlspecialchars($product['name']); ?></h3>
+                                <p class="product-brand"><?php echo htmlspecialchars($product['brand']); ?></p>
+                                <p class="product-price">$<?php echo number_format($product['price'], 2); ?></p>
+                            </div>
+                        </div>
+                        <?php
                     endforeach;
                     ?>
                 </div>
@@ -294,8 +796,83 @@ $cart_count = count($cart_items);
 <?php include '../components/footer.php'; ?>
 
 <!-- JavaScript -->
-<script src="../assets/js/main.js"></script>
-<script src="../assets/js/cart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide loading screen
+    const loadingScreen = document.getElementById('global-loading');
+    if (loadingScreen) {
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 1000);
+    }
+
+    // Quantity buttons functionality
+    document.querySelectorAll('.quantity-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.dataset.action;
+            const productId = this.dataset.productId;
+            const input = document.querySelector(`.quantity-input[data-product-id="${productId}"]`);
+            let quantity = parseInt(input.value);
+
+            if (action === 'increase') {
+                quantity++;
+            } else if (action === 'decrease' && quantity > 1) {
+                quantity--;
+            }
+
+            input.value = quantity;
+            updateItemTotal(productId, quantity);
+        });
+    });
+
+    // Quantity input change
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const productId = this.dataset.productId;
+            let quantity = parseInt(this.value);
+            const max = parseInt(this.max);
+
+            if (quantity < 1) quantity = 1;
+            if (quantity > max) quantity = max;
+
+            this.value = quantity;
+            updateItemTotal(productId, quantity);
+        });
+    });
+
+    // Remove item
+    document.querySelectorAll('.remove-item').forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            if (confirm('Are you sure you want to remove this item from your cart?')) {
+                // Implement remove functionality here
+                console.log('Remove item:', productId);
+            }
+        });
+    });
+
+    // Save for later
+    document.querySelectorAll('.save-later').forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            // Implement save for later functionality here
+            console.log('Save for later:', productId);
+        });
+    });
+
+    function updateItemTotal(productId, quantity) {
+        const item = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
+        const price = parseFloat(item.querySelector('.current-price').textContent.replace('$', ''));
+        const totalElement = item.querySelector('.total-price');
+        const total = price * quantity;
+        
+        totalElement.textContent = '$' + total.toFixed(2);
+        
+        // Update cart total (you would typically make an AJAX call here)
+        console.log('Update quantity for product', productId, 'to', quantity);
+    }
+});
+</script>
 
 </body>
 </html>

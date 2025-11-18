@@ -1,43 +1,44 @@
 <?php
+// components/product-card.php
+
 // Ensure $product variable is set and has required structure
 if (!isset($product) || !is_array($product)) {
     return;
 }
 
-// Set default values for missing product properties
-$default_product = [
-    'id' => 0,
-    'name' => 'Product Name',
-    'brand' => 'Brand',
-    'price' => 0,
-    'original_price' => 0,
-    'image_url' => '',
-    'rating' => 0,
-    'review_count' => 0,
-    'stock_quantity' => 0,
-    'featured' => false,
-    'on_sale' => false,
-    'new_arrival' => false
-];
+// Set default values to avoid undefined array key warnings
+$product['id'] = $product['id'] ?? 0;
+$product['name'] = $product['name'] ?? 'Unknown Product';
+$product['brand'] = $product['brand'] ?? 'Unknown Brand';
+$product['price'] = $product['price'] ?? 0;
+$product['original_price'] = $product['original_price'] ?? 0;
+$product['image_url'] = $product['image_url'] ?? '';
+$product['rating'] = $product['rating'] ?? 0;
+$product['review_count'] = $product['review_count'] ?? 0;
+$product['stock_quantity'] = $product['stock_quantity'] ?? 0;
+$product['featured'] = $product['featured'] ?? false;
+$product['on_sale'] = $product['on_sale'] ?? false;
+$product['new_arrival'] = $product['new_arrival'] ?? false;
 
-// Merge with default values
-$product = array_merge($default_product, $product);
-
+// Calculate discount if applicable
 $discount = 0;
-if ($product['original_price'] && $product['original_price'] > $product['price']) {
+if (!empty($product['original_price']) && $product['original_price'] > 0 && $product['original_price'] > $product['price']) {
     $discount = round((($product['original_price'] - $product['price']) / $product['original_price']) * 100);
 }
 
 // Determine card variant based on product properties
 $card_class = 'product-card';
-if ($product['featured']) {
+if (!empty($product['featured'])) {
     $card_class .= ' featured';
 }
-if ($product['on_sale']) {
+if (!empty($product['on_sale'])) {
     $card_class .= ' sale';
 }
 if ($discount > 0) {
     $card_class .= ' discounted';
+}
+if (!empty($product['new_arrival'])) {
+    $card_class .= ' new-arrival';
 }
 ?>
 
@@ -47,17 +48,14 @@ if ($discount > 0) {
             <?php if (!empty($product['image_url'])): ?>
                 <img src="<?php echo $product['image_url']; ?>" 
                      alt="<?php echo htmlspecialchars($product['name']); ?>" 
+                     class="product-image-main"
+                     loading="lazy"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="product-image-placeholder" style="display: none;">
-                    <i class="fas fa-shoe-prints"></i>
-                    <span class="placeholder-text"><?php echo htmlspecialchars($product['name']); ?></span>
-                </div>
-            <?php else: ?>
-                <div class="product-image-placeholder">
-                    <i class="fas fa-shoe-prints"></i>
-                    <span class="placeholder-text"><?php echo htmlspecialchars($product['name']); ?></span>
-                </div>
             <?php endif; ?>
+            <div class="product-image-placeholder" style="<?php echo !empty($product['image_url']) ? 'display: none;' : 'display: flex;'; ?>">
+                <i class="fas fa-shoe-prints"></i>
+                <span class="placeholder-text"><?php echo htmlspecialchars($product['brand']); ?></span>
+            </div>
         </a>
         
         <!-- Product Badges -->
@@ -65,13 +63,15 @@ if ($discount > 0) {
             <?php if ($discount > 0): ?>
                 <span class="badge discount">-<?php echo $discount; ?>%</span>
             <?php endif; ?>
-            <?php if ($product['new_arrival']): ?>
+            <?php if (!empty($product['new_arrival'])): ?>
                 <span class="badge new">NEW</span>
             <?php endif; ?>
-            <?php if ($product['stock_quantity'] <= 0): ?>
+            <?php if (!empty($product['stock_quantity']) && $product['stock_quantity'] <= 0): ?>
                 <span class="badge out-of-stock">SOLD OUT</span>
+            <?php elseif (!empty($product['stock_quantity']) && $product['stock_quantity'] <= 5): ?>
+                <span class="badge low-stock">LOW STOCK</span>
             <?php endif; ?>
-            <?php if ($product['featured']): ?>
+            <?php if (!empty($product['featured'])): ?>
                 <span class="badge featured">FEATURED</span>
             <?php endif; ?>
         </div>
@@ -84,13 +84,10 @@ if ($discount > 0) {
             <button class="action-btn quick-view-btn" title="Quick View" data-product-id="<?php echo $product['id']; ?>">
                 <i class="fas fa-eye"></i>
             </button>
-            <button class="action-btn compare-btn" title="Compare" data-product-id="<?php echo $product['id']; ?>">
-                <i class="fas fa-exchange-alt"></i>
-            </button>
         </div>
 
         <!-- Add to Cart Button -->
-        <?php if ($product['stock_quantity'] > 0): ?>
+        <?php if (!empty($product['stock_quantity']) && $product['stock_quantity'] > 0): ?>
             <button class="btn-add-cart" data-product-id="<?php echo $product['id']; ?>">
                 <i class="fas fa-shopping-cart"></i>
                 Add to Cart
@@ -117,7 +114,7 @@ if ($discount > 0) {
         <!-- Product Price -->
         <div class="product-price">
             <span class="current-price">$<?php echo number_format($product['price'], 2); ?></span>
-            <?php if ($product['original_price'] && $product['original_price'] > $product['price']): ?>
+            <?php if (!empty($product['original_price']) && $product['original_price'] > 0 && $product['original_price'] > $product['price']): ?>
                 <span class="original-price">$<?php echo number_format($product['original_price'], 2); ?></span>
             <?php endif; ?>
         </div>
@@ -127,7 +124,7 @@ if ($discount > 0) {
             <div class="stars">
                 <?php 
                 // Simple star rating generator
-                $rating = $product['rating'];
+                $rating = !empty($product['rating']) ? $product['rating'] : 0;
                 $fullStars = floor($rating);
                 $halfStar = ($rating - $fullStars) >= 0.5;
                 $emptyStars = 5 - $fullStars - ($halfStar ? 1 : 0);
@@ -143,14 +140,7 @@ if ($discount > 0) {
                 }
                 ?>
             </div>
-            <span class="rating-count">(<?php echo $product['review_count']; ?>)</span>
+            <span class="rating-count">(<?php echo !empty($product['review_count']) ? $product['review_count'] : 0; ?>)</span>
         </div>
-        
-        <!-- Stock Information -->
-        <?php if ($product['stock_quantity'] > 0 && $product['stock_quantity'] <= 10): ?>
-            <div class="stock-info">
-                <span class="low-stock">Only <?php echo $product['stock_quantity']; ?> left!</span>
-            </div>
-        <?php endif; ?>
     </div>
 </div>

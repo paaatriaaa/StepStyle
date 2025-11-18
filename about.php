@@ -30,10 +30,506 @@ require_once 'config/functions.php';
     
     <!-- Main CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/about.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    
+    <style>
+        /* About Page Styles */
+        .about-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6rem 0 4rem;
+            text-align: center;
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .section-padding {
+            padding: 5rem 0;
+        }
+        
+        .bg-light {
+            background: #f8fafc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* About Content */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+        
+        .content-block {
+            margin-bottom: 3rem;
+        }
+        
+        .content-block h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+            position: relative;
+        }
+        
+        .content-block h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+        
+        .content-block p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Mission Stats */
+        .mission-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .stat {
+            text-align: center;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .stat-number {
+            display: block;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .feature {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .feature h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+        
+        .feature p {
+            font-size: 0.95rem;
+            color: #6b7280;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        /* Sidebar */
+        .about-sidebar {
+            position: sticky;
+            top: 2rem;
+        }
+        
+        .sidebar-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            margin-bottom: 2rem;
+        }
+        
+        .sidebar-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+            text-align: center;
+            position: relative;
+        }
+        
+        .sidebar-card h3::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+        
+        .facts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .fact {
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .fact strong {
+            color: #1f2937;
+        }
+        
+        .values-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .value {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            transition: transform 0.2s ease;
+        }
+        
+        .value:hover {
+            transform: translateX(5px);
+        }
+        
+        .value i {
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+        
+        .value span {
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #374151;
+            transition: all 0.3s ease;
+        }
+        
+        .social-link:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .social-link i {
+            font-size: 1.3rem;
+            width: 24px;
+        }
+        
+        /* Team Section */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+        
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: #6b7280;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .team-member {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .team-member:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .member-image {
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-placeholder {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .member-info {
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .member-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+        
+        .member-role {
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .member-bio {
+            color: #6b7280;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .cta-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .cta-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        .cta-description {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .cta-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        
+        .btn-outline:hover {
+            background: white;
+            color: #1f2937;
+            transform: translateY(-2px);
+        }
+        
+        .btn-large {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .about-sidebar {
+                position: static;
+            }
+            
+            .mission-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .cta-title {
+                font-size: 2rem;
+            }
+            
+            .cta-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .mission-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .section-padding {
+                padding: 3rem 0;
+            }
+        }
+    </style>
 </head>
 <body class="<?php echo $body_class; ?>">
 
@@ -212,55 +708,73 @@ require_once 'config/functions.php';
             </div>
 
             <div class="team-grid">
+                <!-- Team Member 1 -->
                 <div class="team-member">
                     <div class="member-image">
                         <div class="image-placeholder">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-user-tie"></i>
                         </div>
                     </div>
                     <div class="member-info">
                         <h3 class="member-name">Alex Johnson</h3>
                         <p class="member-role">Founder & CEO</p>
-                        <p class="member-bio">Sneaker enthusiast with 10+ years in the industry. Started StepStyle to share his passion with the world.</p>
+                        <p class="member-bio">Sneaker enthusiast with 10+ years in the industry. Started StepStyle to share his passion with the world and create the ultimate destination for authentic footwear.</p>
                     </div>
                 </div>
 
+                <!-- Team Member 2 -->
                 <div class="team-member">
                     <div class="member-image">
                         <div class="image-placeholder">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-search"></i>
                         </div>
                     </div>
                     <div class="member-info">
                         <h3 class="member-name">Sarah Chen</h3>
                         <p class="member-role">Head of Authenticity</p>
-                        <p class="member-bio">Expert in sneaker authentication with a keen eye for detail and quality assurance.</p>
+                        <p class="member-bio">Expert in sneaker authentication with a keen eye for detail. Sarah ensures every product meets our strict quality standards before reaching our customers.</p>
                     </div>
                 </div>
 
+                <!-- Team Member 3 -->
                 <div class="team-member">
                     <div class="member-image">
                         <div class="image-placeholder">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-palette"></i>
                         </div>
                     </div>
                     <div class="member-info">
                         <h3 class="member-name">Mike Rodriguez</h3>
                         <p class="member-role">Creative Director</p>
-                        <p class="member-bio">Brings style and innovation to our brand, ensuring we stay ahead of trends.</p>
+                        <p class="member-bio">Brings style and innovation to our brand. Mike's creative vision ensures we stay ahead of trends while maintaining our unique identity in the market.</p>
                     </div>
                 </div>
 
+                <!-- Team Member 4 -->
                 <div class="team-member">
                     <div class="member-image">
                         <div class="image-placeholder">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-headset"></i>
                         </div>
                     </div>
                     <div class="member-info">
                         <h3 class="member-name">Emily Davis</h3>
-                        <p class="member-role">Customer Experience</p>
-                        <p class="member-bio">Dedicated to ensuring every customer has an exceptional shopping experience.</p>
+                        <p class="member-role">Customer Experience Manager</p>
+                        <p class="member-bio">Dedicated to ensuring every customer has an exceptional shopping experience. Emily leads our support team with passion and attention to detail.</p>
+                    </div>
+                </div>
+
+                <!-- Team Member 5 -->
+                <div class="team-member">
+                    <div class="member-image">
+                        <div class="image-placeholder">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="member-info">
+                        <h3 class="member-name">David Kim</h3>
+                        <p class="member-role">Operations Director</p>
+                        <p class="member-bio">Oversees our logistics and supply chain. David ensures smooth operations from warehouse to delivery, making sure you get your sneakers fast and secure.</p>
                     </div>
                 </div>
             </div>
@@ -293,7 +807,54 @@ require_once 'config/functions.php';
 
 <!-- JavaScript -->
 <script src="assets/js/main.js"></script>
-<script src="assets/js/about.js"></script>
+<script>
+// Simple JavaScript for about page
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide loading screen
+    const loadingScreen = document.getElementById('global-loading');
+    if (loadingScreen) {
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 1000);
+    }
+
+    // Add animation to stats when they come into view
+    const stats = document.querySelectorAll('.stat');
+    const features = document.querySelectorAll('.feature');
+    const teamMembers = document.querySelectorAll('.team-member');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+
+    // Set initial state for animation
+    stats.forEach(stat => {
+        stat.style.opacity = '0';
+        stat.style.transform = 'translateY(20px)';
+        stat.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(stat);
+    });
+
+    features.forEach(feature => {
+        feature.style.opacity = '0';
+        feature.style.transform = 'translateY(20px)';
+        feature.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(feature);
+    });
+
+    teamMembers.forEach(member => {
+        member.style.opacity = '0';
+        member.style.transform = 'translateY(20px)';
+        member.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(member);
+    });
+});
+</script>
 
 </body>
 </html>

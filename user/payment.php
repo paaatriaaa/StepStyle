@@ -13,6 +13,12 @@ $body_class = 'payment-page';
 require_once '../config/database.php';
 require_once '../config/functions.php';
 
+// Check if user is logged in
+if (!isLoggedIn()) {
+    header('Location: ../auth/login.php');
+    exit();
+}
+
 // Check if order data exists
 if (!isset($_SESSION['current_order'])) {
     header('Location: checkout.php');
@@ -138,7 +144,6 @@ $order_data = $_SESSION['current_order'];
                             <div class="item-details">
                                 <h4 class="item-name"><?php echo htmlspecialchars($item['name']); ?></h4>
                                 <p class="item-brand"><?php echo htmlspecialchars($item['brand']); ?></p>
-                                <p class="item-size">Size: <?php echo $item['size']; ?></p>
                                 <p class="item-quantity">Qty: <?php echo $item['quantity']; ?></p>
                             </div>
                             <div class="item-price">

@@ -20,10 +20,264 @@ $price_filter = $_GET['price'] ?? '';
 $sort_by = $_GET['sort'] ?? 'featured';
 $search_query = $_GET['search'] ?? '';
 
-// Get products based on filters
-$products = getFilteredProducts($category_filter, $brand_filter, $price_filter, $sort_by, $search_query);
-$categories = getCategories();
-$brands = getBrands();
+// Data produk langsung di file ini (sama seperti di index.php)
+$all_products = [
+    [
+        'id' => 1,
+        'name' => 'Puma MB.05',
+        'brand' => 'PUMA',
+        'price' => 110.00,
+        'original_price' => 0,
+        'image_url' => 'https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_600,h_600/global/312131/01/sv02/fnd/PNA/fmt/png/PUMA-x-LAMELO-BALL-MB.05-Voltage-Basketball-Shoes',
+        'rating' => 4.5,
+        'review_count' => 45,
+        'stock_quantity' => 15,
+        'featured' => true,
+        'on_sale' => false,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 2,
+        'name' => 'Vans Skate Loafer',
+        'brand' => 'VANS',
+        'price' => 60.00,
+        'original_price' => 0,
+        'image_url' => 'https://assets.vans.eu/images/t_img/c_fill,g_center,f_auto,h_815,w_652,e_unsharp_mask:100/dpr_2.0/v1753291890/VN0A5DXUBKA-ALT2/Skate-Loafer-Shoes.jpg',
+        'rating' => 4.5,
+        'review_count' => 203,
+        'stock_quantity' => 25,
+        'featured' => true,
+        'on_sale' => false,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 3,
+        'name' => 'Converse Chuck 70',
+        'brand' => 'CONVERSE',
+        'price' => 85.00,
+        'original_price' => 100.00,
+        'image_url' => 'https://clothbase.s3.amazonaws.com/uploads/10c6f920-e854-4bc8-90c3-c2d86817751b/image.jpg',
+        'rating' => 4.5,
+        'review_count' => 156,
+        'stock_quantity' => 3,
+        'featured' => true,
+        'on_sale' => true,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 4,
+        'name' => 'Reebok Court Advance',
+        'brand' => 'REEBOK',
+        'price' => 75.00,
+        'original_price' => 0,
+        'image_url' => 'https://reebokbr.vtexassets.com/arquivos/ids/161812/HR1485--1-.jpg?v=638115718439370000',
+        'rating' => 4.5,
+        'review_count' => 89,
+        'stock_quantity' => 12,
+        'featured' => true,
+        'on_sale' => false,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 5,
+        'name' => 'Nike Alphafly 3',
+        'brand' => 'NIKE',
+        'price' => 150.00,
+        'original_price' => 0,
+        'image_url' => 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/50484187-18b3-4373-8118-8ea0f0f37093/AIR+ZOOM+ALPHAFLY+NEXT%25+3+PRM.png',
+        'rating' => 4.8,
+        'review_count' => 312,
+        'stock_quantity' => 8,
+        'featured' => true,
+        'on_sale' => false,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 6,
+        'name' => 'Adidas Adizero Boston 13',
+        'brand' => 'ADIDAS',
+        'price' => 180.00,
+        'original_price' => 200.00,
+        'image_url' => 'https://brand.assets.adidas.com/image/upload/f_auto,q_auto:best,fl_lossy/global_adizero_boston_eqt_13_running_fw25_launch_pdp_banner_split_3_d_70070e441e.jpg',
+        'rating' => 4.9,
+        'review_count' => 267,
+        'stock_quantity' => 15,
+        'featured' => true,
+        'on_sale' => true,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 7,
+        'name' => 'New Balance 530',
+        'brand' => 'NEW BALANCE',
+        'price' => 80.00,
+        'original_price' => 0,
+        'image_url' => 'https://sneakerpeeker.es/hpeciai/596ef3ad9f37e0f8df4dbce283d8c17f/spa_pl_New-Balance-530-MR530SG-17383_1.jpg',
+        'rating' => 4.4,
+        'review_count' => 178,
+        'stock_quantity' => 22,
+        'featured' => true,
+        'on_sale' => false,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 8,
+        'name' => 'Jordan 1 Retro',
+        'brand' => 'JORDAN',
+        'price' => 170.00,
+        'original_price' => 190.00,
+        'image_url' => 'https://sneakernews.com/wp-content/uploads/2021/01/air-jordan-1-retro-high-og-hyper-royal-555088-402-release-date-7.jpg',
+        'rating' => 4.7,
+        'review_count' => 445,
+        'stock_quantity' => 5,
+        'featured' => true,
+        'on_sale' => true,
+        'new_arrival' => false
+    ],
+    [
+        'id' => 9,
+        'name' => 'Nike Dunk Low',
+        'brand' => 'NIKE',
+        'price' => 110.00,
+        'original_price' => 0,
+        'image_url' => 'https://sneakerbardetroit.com/wp-content/uploads/2023/05/Nike-Dunk-Low-White-Oil-Green-Cargo-Khaki-FN6882-100.jpeg',
+        'rating' => 4.6,
+        'review_count' => 89,
+        'stock_quantity' => 12,
+        'featured' => false,
+        'on_sale' => false,
+        'new_arrival' => true
+    ],
+    [
+        'id' => 10,
+        'name' => 'Adidas Samba OG',
+        'brand' => 'ADIDAS',
+        'price' => 130.00,
+        'original_price' => 150.00,
+        'image_url' => 'https://www.consortium.co.uk/media/catalog/product/cache/1/image/040ec09b1e35df139433887a97daa66f/a/d/adidas-originals-samba-og-maroon-cream-white-gold-metallic-id0477_0006_6.jpg',
+        'rating' => 4.5,
+        'review_count' => 67,
+        'stock_quantity' => 18,
+        'featured' => false,
+        'on_sale' => true,
+        'new_arrival' => true
+    ],
+    [
+        'id' => 11,
+        'name' => 'Puma Speedcat',
+        'brand' => 'PUMA',
+        'price' => 75.00,
+        'original_price' => 0,
+        'image_url' => 'https://cdn02.plentymarkets.com/y556ywtxgskt/item/images/9559/full/puma--pum-339844-05--20.jpg',
+        'rating' => 4.3,
+        'review_count' => 34,
+        'stock_quantity' => 25,
+        'featured' => false,
+        'on_sale' => false,
+        'new_arrival' => true
+    ],
+    [
+        'id' => 12,
+        'name' => 'Converse Run Star Trainer',
+        'brand' => 'CONVERSE',
+        'price' => 110.00,
+        'original_price' => 0,
+        'image_url' => 'https://www.converse.com/dw/image/v2/BJJF_PRD/on/demandware.static/-/Sites-cnv-master-catalog-we/default/dw40d067f2/images/g_08/A10449C_G_08X1.jpg',
+        'rating' => 4.7,
+        'review_count' => 56,
+        'stock_quantity' => 7,
+        'featured' => false,
+        'on_sale' => false,
+        'new_arrival' => true
+    ]
+];
+
+// Apply filters
+$products = $all_products;
+
+if ($category_filter) {
+    $products = array_filter($products, function($product) use ($category_filter) {
+        return stripos($product['name'], $category_filter) !== false || 
+               stripos($product['brand'], $category_filter) !== false;
+    });
+}
+
+if ($brand_filter) {
+    $products = array_filter($products, function($product) use ($brand_filter) {
+        return strtolower($product['brand']) === strtolower($brand_filter);
+    });
+}
+
+if ($price_filter) {
+    $products = array_filter($products, function($product) use ($price_filter) {
+        switch ($price_filter) {
+            case 'under50':
+                return $product['price'] < 50;
+            case '50-100':
+                return $product['price'] >= 50 && $product['price'] <= 100;
+            case '100-200':
+                return $product['price'] >= 100 && $product['price'] <= 200;
+            case 'over200':
+                return $product['price'] > 200;
+            default:
+                return true;
+        }
+    });
+}
+
+if ($search_query) {
+    $products = array_filter($products, function($product) use ($search_query) {
+        return stripos($product['name'], $search_query) !== false || 
+               stripos($product['brand'], $search_query) !== false;
+    });
+}
+
+// Apply sorting
+usort($products, function($a, $b) use ($sort_by) {
+    switch ($sort_by) {
+        case 'price-low':
+            return $a['price'] <=> $b['price'];
+        case 'price-high':
+            return $b['price'] <=> $a['price'];
+        case 'newest':
+            return ($b['new_arrival'] ?? false) <=> ($a['new_arrival'] ?? false);
+        case 'rating':
+            return $b['rating'] <=> $a['rating'];
+        case 'name':
+            return $a['name'] <=> $b['name'];
+        default: // featured
+            return ($b['featured'] ?? false) <=> ($a['featured'] ?? false);
+    }
+});
+
+// Data categories dan brands berdasarkan produk yang ada
+$categories = [
+    ['name' => 'Running', 'slug' => 'running', 'count' => 4],
+    ['name' => 'Basketball', 'slug' => 'basketball', 'count' => 2],
+    ['name' => 'Lifestyle', 'slug' => 'lifestyle', 'count' => 5],
+    ['name' => 'Skateboarding', 'slug' => 'skateboarding', 'count' => 2],
+    ['name' => 'Training', 'slug' => 'training', 'count' => 3],
+    ['name' => 'Sandals', 'slug' => 'sandals', 'count' => 1]
+];
+
+// Hitung brands dari produk yang ada
+$brand_counts = [];
+foreach ($all_products as $product) {
+    $brand = $product['brand'];
+    if (!isset($brand_counts[$brand])) {
+        $brand_counts[$brand] = 0;
+    }
+    $brand_counts[$brand]++;
+}
+
+$brands = [];
+foreach ($brand_counts as $brand_name => $count) {
+    $brands[] = [
+        'name' => $brand_name,
+        'slug' => strtolower($brand_name),
+        'count' => $count
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -306,8 +560,14 @@ $brands = getBrands();
                 <div class="products-container">
                     <div class="products-grid" id="products-grid">
                         <?php if (!empty($products)): ?>
-                            <?php foreach ($products as $product): ?>
-                                <?php include '../components/product-card.php'; ?>
+                            <?php foreach ($products as $product_item): ?>
+                                <div class="product-item">
+                                    <?php 
+                                    // Set product variable untuk component
+                                    $product = $product_item; 
+                                    include '../components/product-card.php'; 
+                                    ?>
+                                </div>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <!-- No Results -->
