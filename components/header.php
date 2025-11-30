@@ -48,7 +48,7 @@ if (isset($_SESSION['user_first_name'])) {
     <div class="top-bar">
         <div class="container">
             <div class="contact-info">
-                <span><i class="fas fa-phone"></i> +62 (555) 123-STEP</span>
+                <span><i class="fas fa-phone"></i> +62-123-456</span>
                 <span><i class="fas fa-envelope"></i> support@stepstyle.com</span>
             </div>
             <div class="top-links">

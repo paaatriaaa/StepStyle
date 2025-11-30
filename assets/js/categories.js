@@ -1,368 +1,329 @@
-// Categories Page Functionality
-class CategoriesManager {
-    constructor() {
-        this.filters = {
-            category: [],
-            brand: [],
-            price: '',
-            size: [],
-            color: []
-        };
-        this.init();
-    }
+// categories.js - Updated with enhanced animations and effects
 
-    init() {
-        this.setupEventListeners();
-        this.setupFilterToggles();
-        this.updateActiveFilters();
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize categories page
+    initCategoriesPage();
+    
+    // Filter functionality
+    initFilters();
+    
+    // View toggle functionality
+    initViewToggle();
+    
+    // Sort functionality
+    initSorting();
+    
+    // Load more functionality
+    initLoadMore();
+});
 
-    setupEventListeners() {
-        // Filter changes
-        document.querySelectorAll('input[name="category"]').forEach(input => {
-            input.addEventListener('change', this.handleCategoryFilter.bind(this));
+function initCategoriesPage() {
+    console.log('Initializing categories page...');
+    
+    // Add loading animation to product cards
+    const productItems = document.querySelectorAll('.product-item');
+    productItems.forEach((item, index) => {
+        item.style.animationDelay = `${index * 0.1}s`;
+        item.classList.add('fade-in-up');
+    });
+    
+    // Initialize filter toggles
+    initFilterToggles();
+}
+
+function initFilterToggles() {
+    const filterToggles = document.querySelectorAll('.filter-toggle');
+    
+    filterToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const filterSection = this.closest('.filter-section');
+            const filterContent = filterSection.querySelector('.filter-content');
+            const icon = this.querySelector('i');
+            
+            // Toggle content visibility
+            filterContent.style.display = filterContent.style.display === 'none' ? 'block' : 'none';
+            
+            // Rotate icon
+            icon.style.transform = filterContent.style.display === 'none' ? 'rotate(0deg)' : 'rotate(180deg)';
+            
+            // Add smooth transition
+            filterContent.style.transition = 'all 0.3s ease';
         });
+    });
+}
 
-        document.querySelectorAll('input[name="brand"]').forEach(input => {
-            input.addEventListener('change', this.handleBrandFilter.bind(this));
+function initFilters() {
+    const filterInputs = document.querySelectorAll('input[name="category"], input[name="brand"], input[name="price"], input[name="color"]');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const sizeOptions = document.querySelectorAll('.size-option');
+    
+    // Filter inputs change handler
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            applyFilters();
+            updateActiveFilters();
         });
-
-        document.querySelectorAll('input[name="price"]').forEach(input => {
-            input.addEventListener('change', this.handlePriceFilter.bind(this));
+    });
+    
+    // Size options click handler
+    sizeOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            this.classList.toggle('active');
+            applyFilters();
+            updateActiveFilters();
         });
-
-        // Size options
-        document.querySelectorAll('.size-option').forEach(btn => {
-            btn.addEventListener('click', this.handleSizeFilter.bind(this));
-        });
-
-        // Color options
-        document.querySelectorAll('input[name="color"]').forEach(input => {
-            input.addEventListener('change', this.handleColorFilter.bind(this));
-        });
-
-        // Clear filters
-        const clearBtn = document.getElementById('clear-filters');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', this.clearAllFilters.bind(this));
+    });
+    
+    // Clear filters handler
+    clearFiltersBtn.addEventListener('click', function() {
+        clearAllFilters();
+    });
+    
+    // Remove individual filter handler
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-filter')) {
+            const filterType = e.target.closest('.remove-filter').dataset.filter;
+            removeFilter(filterType);
         }
+    });
+}
 
-        // Remove filter tags
-        document.querySelectorAll('.remove-filter').forEach(btn => {
-            btn.addEventListener('click', this.handleRemoveFilter.bind(this));
-        });
-
-        // View options
-        document.querySelectorAll('.view-option').forEach(btn => {
-            btn.addEventListener('click', this.handleViewChange.bind(this));
-        });
-
-        // Sort options
-        const sortSelect = document.getElementById('sort-by');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', this.handleSortChange.bind(this));
-        }
-
-        // Load more
-        const loadMoreBtn = document.getElementById('load-more');
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', this.handleLoadMore.bind(this));
-        }
-
-        // Reset search
-        const resetSearchBtn = document.getElementById('reset-search');
-        if (resetSearchBtn) {
-            resetSearchBtn.addEventListener('click', this.resetSearch.bind(this));
-        }
-    }
-
-    setupFilterToggles() {
-        document.querySelectorAll('.filter-toggle').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const content = this.closest('.filter-section').querySelector('.filter-content');
-                this.classList.toggle('active');
-                
-                if (this.classList.contains('active')) {
-                    content.style.display = 'block';
-                } else {
-                    content.style.display = 'none';
-                }
-            });
-        });
-    }
-
-    handleCategoryFilter(event) {
-        const checkbox = event.target;
-        const value = checkbox.value;
+function applyFilters() {
+    const products = document.querySelectorAll('.product-item');
+    let visibleCount = 0;
+    
+    products.forEach(product => {
+        let shouldShow = true;
         
-        if (checkbox.checked) {
-            this.filters.category.push(value);
+        // Add filtering logic here based on selected filters
+        // This is a simplified version - you'll need to implement actual filtering logic
+        
+        if (shouldShow) {
+            product.style.display = 'block';
+            visibleCount++;
+            
+            // Add animation
+            product.style.animation = 'fadeInUp 0.5s ease';
         } else {
-            this.filters.category = this.filters.category.filter(cat => cat !== value);
+            product.style.display = 'none';
         }
-        
-        this.applyFilters();
-    }
+    });
+    
+    // Update product count
+    updateProductCount(visibleCount);
+    
+    // Show/hide no results message
+    toggleNoResults(visibleCount === 0);
+}
 
-    handleBrandFilter(event) {
-        const checkbox = event.target;
-        const value = checkbox.value;
-        
-        if (checkbox.checked) {
-            this.filters.brand.push(value);
-        } else {
-            this.filters.brand = this.filters.brand.filter(brand => brand !== value);
-        }
-        
-        this.applyFilters();
-    }
-
-    handlePriceFilter(event) {
-        this.filters.price = event.target.value;
-        this.applyFilters();
-    }
-
-    handleSizeFilter(event) {
-        const button = event.currentTarget;
-        const size = button.dataset.size;
-        
-        button.classList.toggle('active');
-        
-        if (button.classList.contains('active')) {
-            this.filters.size.push(size);
-        } else {
-            this.filters.size = this.filters.size.filter(s => s !== size);
-        }
-        
-        this.applyFilters();
-    }
-
-    handleColorFilter(event) {
-        const checkbox = event.target;
-        const value = checkbox.value;
-        
-        if (checkbox.checked) {
-            this.filters.color.push(value);
-        } else {
-            this.filters.color = this.filters.color.filter(color => color !== value);
-        }
-        
-        this.applyFilters();
-    }
-
-    applyFilters() {
-        // In a real application, this would make an API call
-        // For now, we'll just update the URL and show a loading state
-        this.updateURL();
-        this.updateActiveFilters();
-        this.showLoadingState();
-        
-        // Simulate API call delay
-        setTimeout(() => {
-            this.hideLoadingState();
-            window.StepStyle.showNotification('Filters applied', 'info');
-        }, 500);
-    }
-
-    updateURL() {
-        const params = new URLSearchParams();
-        
-        if (this.filters.category.length > 0) {
-            params.set('cat', this.filters.category[0]); // Single category for demo
-        }
-        
-        if (this.filters.brand.length > 0) {
-            params.set('brand', this.filters.brand[0]); // Single brand for demo
-        }
-        
-        if (this.filters.price) {
-            params.set('price', this.filters.price);
-        }
-        
-        // Update URL without page reload (for demo)
-        const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.history.replaceState({}, '', newURL);
-    }
-
-    updateActiveFilters() {
-        const activeFiltersContainer = document.getElementById('active-filters');
-        let activeFiltersHTML = '';
-        
-        if (this.filters.category.length > 0 || this.filters.brand.length > 0 || this.filters.price) {
-            activeFiltersHTML = '<div class="filters-list"><span class="filters-label">Active filters:</span>';
-            
-            this.filters.category.forEach(cat => {
-                activeFiltersHTML += `
-                    <span class="filter-tag">
-                        Category: ${this.capitalizeFirst(cat)}
-                        <button class="remove-filter" data-filter="category" data-value="${cat}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </span>
-                `;
-            });
-            
-            this.filters.brand.forEach(brand => {
-                activeFiltersHTML += `
-                    <span class="filter-tag">
-                        Brand: ${this.capitalizeFirst(brand)}
-                        <button class="remove-filter" data-filter="brand" data-value="${brand}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </span>
-                `;
-            });
-            
-            if (this.filters.price) {
-                let priceText = this.filters.price;
-                if (priceText === 'under50') priceText = 'Under $50';
-                else if (priceText === '50-100') priceText = '$50 - $100';
-                else if (priceText === '100-200') priceText = '$100 - $200';
-                else if (priceText === 'over200') priceText = 'Over $200';
-                
-                activeFiltersHTML += `
-                    <span class="filter-tag">
-                        Price: ${priceText}
-                        <button class="remove-filter" data-filter="price" data-value="${this.filters.price}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </span>
-                `;
-            }
-            
-            activeFiltersHTML += '</div>';
-        }
-        
-        activeFiltersContainer.innerHTML = activeFiltersHTML;
-        
-        // Re-attach event listeners to new remove buttons
-        document.querySelectorAll('.remove-filter').forEach(btn => {
-            btn.addEventListener('click', this.handleRemoveFilter.bind(this));
-        });
-    }
-
-    handleRemoveFilter(event) {
-        const button = event.currentTarget;
-        const filterType = button.dataset.filter;
-        const filterValue = button.dataset.value;
-        
-        switch (filterType) {
-            case 'category':
-                this.filters.category = this.filters.category.filter(cat => cat !== filterValue);
-                document.querySelector(`input[name="category"][value="${filterValue}"]`).checked = false;
-                break;
-            case 'brand':
-                this.filters.brand = this.filters.brand.filter(brand => brand !== filterValue);
-                document.querySelector(`input[name="brand"][value="${filterValue}"]`).checked = false;
-                break;
-            case 'price':
-                this.filters.price = '';
-                document.querySelector('input[name="price"]:checked').checked = false;
-                document.querySelector('#price-all').checked = true;
-                break;
-        }
-        
-        this.applyFilters();
-    }
-
-    clearAllFilters() {
-        // Reset all checkboxes and radio buttons
-        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            if (radio.id === 'price-all') {
-                radio.checked = true;
-            } else {
-                radio.checked = false;
-            }
-        });
-        
-        document.querySelectorAll('.size-option').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Reset filters object
-        this.filters = {
-            category: [],
-            brand: [],
-            price: '',
-            size: [],
-            color: []
-        };
-        
-        this.applyFilters();
-    }
-
-    handleViewChange(event) {
-        const button = event.currentTarget;
-        const view = button.dataset.view;
-        const productsGrid = document.getElementById('products-grid');
-        
-        // Update active button
-        document.querySelectorAll('.view-option').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        button.classList.add('active');
-        
-        // Update grid view
-        productsGrid.classList.remove('grid-view', 'list-view');
-        productsGrid.classList.add(view + '-view');
-    }
-
-    handleSortChange(event) {
-        const sortBy = event.target.value;
-        
-        // In real app, this would reload products with new sorting
-        window.StepStyle.showNotification(`Sorted by: ${event.target.options[event.target.selectedIndex].text}`, 'info');
-        
-        // Update URL
-        const url = new URL(window.location);
-        url.searchParams.set('sort', sortBy);
-        window.history.replaceState({}, '', url);
-    }
-
-    handleLoadMore() {
-        const button = document.getElementById('load-more');
-        const originalText = button.innerHTML;
-        
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        button.disabled = true;
-        
-        // Simulate loading more products
-        setTimeout(() => {
-            window.StepStyle.showNotification('More products loaded!', 'success');
-            button.innerHTML = originalText;
-            button.disabled = false;
-            
-            // Hide load more button after "loading" all products
-            button.style.display = 'none';
-        }, 1500);
-    }
-
-    resetSearch() {
-        window.location.href = 'categories.php';
-    }
-
-    showLoadingState() {
-        const productsGrid = document.getElementById('products-grid');
-        productsGrid.style.opacity = '0.5';
-        productsGrid.style.pointerEvents = 'none';
-    }
-
-    hideLoadingState() {
-        const productsGrid = document.getElementById('products-grid');
-        productsGrid.style.opacity = '1';
-        productsGrid.style.pointerEvents = 'auto';
-    }
-
-    capitalizeFirst(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
+function updateProductCount(count) {
+    const countElement = document.querySelector('.page-subtitle');
+    if (countElement) {
+        countElement.textContent = `${count} product${count !== 1 ? 's' : ''} found`;
     }
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    new CategoriesManager();
-});
+function toggleNoResults(show) {
+    let noResults = document.querySelector('.no-results');
+    
+    if (show && !noResults) {
+        noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.innerHTML = `
+            <div class="no-results-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <h3>No products found</h3>
+            <p>Try adjusting your filters or search terms</p>
+            <button class="btn btn-primary" id="reset-search">
+                <i class="fas fa-redo"></i>
+                Reset Filters
+            </button>
+        `;
+        
+        const productsGrid = document.getElementById('products-grid');
+        productsGrid.appendChild(noResults);
+        
+        // Add click handler for reset button
+        document.getElementById('reset-search').addEventListener('click', clearAllFilters);
+    } else if (!show && noResults) {
+        noResults.remove();
+    }
+}
+
+function updateActiveFilters() {
+    const activeFiltersContainer = document.getElementById('active-filters');
+    const selectedFilters = getSelectedFilters();
+    
+    if (Object.keys(selectedFilters).length === 0) {
+        activeFiltersContainer.innerHTML = '';
+        return;
+    }
+    
+    let filtersHTML = '<div class="filters-list"><span class="filters-label">Active filters:</span>';
+    
+    Object.keys(selectedFilters).forEach(filterType => {
+        selectedFilters[filterType].forEach(filterValue => {
+            filtersHTML += `
+                <span class="filter-tag">
+                    ${filterType}: ${formatFilterValue(filterType, filterValue)}
+                    <button class="remove-filter" data-filter="${filterType}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </span>
+            `;
+        });
+    });
+    
+    filtersHTML += '</div>';
+    activeFiltersContainer.innerHTML = filtersHTML;
+}
+
+function getSelectedFilters() {
+    const filters = {};
+    
+    // Get category filters
+    const categoryFilters = Array.from(document.querySelectorAll('input[name="category"]:checked'))
+        .map(input => input.value);
+    if (categoryFilters.length > 0) filters.category = categoryFilters;
+    
+    // Get brand filters
+    const brandFilters = Array.from(document.querySelectorAll('input[name="brand"]:checked'))
+        .map(input => input.value);
+    if (brandFilters.length > 0) filters.brand = brandFilters;
+    
+    // Get price filter
+    const priceFilter = document.querySelector('input[name="price"]:checked');
+    if (priceFilter && priceFilter.value) filters.price = [priceFilter.value];
+    
+    return filters;
+}
+
+function formatFilterValue(filterType, value) {
+    const formatMap = {
+        'under50': 'Under $50',
+        '50-100': '$50 - $100',
+        '100-200': '$100 - $200',
+        'over200': 'Over $200'
+    };
+    
+    return formatMap[value] || value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function removeFilter(filterType) {
+    const inputs = document.querySelectorAll(`input[name="${filterType}"]`);
+    inputs.forEach(input => input.checked = false);
+    
+    applyFilters();
+    updateActiveFilters();
+}
+
+function clearAllFilters() {
+    // Uncheck all filter inputs
+    const filterInputs = document.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+    filterInputs.forEach(input => input.checked = false);
+    
+    // Reset size options
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => option.classList.remove('active'));
+    
+    // Reset color options
+    const colorOptions = document.querySelectorAll('input[name="color"]');
+    colorOptions.forEach(input => input.checked = false);
+    
+    // Apply changes
+    applyFilters();
+    updateActiveFilters();
+    
+    // Add visual feedback
+    const clearBtn = document.getElementById('clear-filters');
+    clearBtn.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        clearBtn.style.transform = 'scale(1)';
+    }, 150);
+}
+
+function initViewToggle() {
+    const viewOptions = document.querySelectorAll('.view-option');
+    const productsGrid = document.getElementById('products-grid');
+    
+    viewOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const viewType = this.dataset.view;
+            
+            // Update active state
+            viewOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply view type
+            productsGrid.className = 'products-grid';
+            if (viewType === 'list') {
+                productsGrid.classList.add('list-view');
+            }
+            
+            // Add transition
+            productsGrid.style.opacity = '0.7';
+            setTimeout(() => {
+                productsGrid.style.opacity = '1';
+                productsGrid.style.transition = 'opacity 0.3s ease';
+            }, 150);
+        });
+    });
+}
+
+function initSorting() {
+    const sortSelect = document.getElementById('sort-by');
+    
+    sortSelect.addEventListener('change', function() {
+        // Add loading state
+        const productsGrid = document.getElementById('products-grid');
+        productsGrid.style.opacity = '0.7';
+        
+        // Simulate sorting delay
+        setTimeout(() => {
+            // Implement actual sorting logic here
+            console.log('Sorting by:', this.value);
+            
+            // Remove loading state
+            productsGrid.style.opacity = '1';
+            productsGrid.style.transition = 'opacity 0.3s ease';
+        }, 500);
+    });
+}
+
+function initLoadMore() {
+    const loadMoreBtn = document.getElementById('load-more');
+    
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            // Add loading state
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            this.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Implement actual load more logic here
+                console.log('Loading more products...');
+                
+                // Reset button state
+                this.innerHTML = originalText;
+                this.disabled = false;
+                
+                // Show success feedback
+                this.style.background = 'var(--success)';
+                setTimeout(() => {
+                    this.style.background = '';
+                }, 1000);
+            }, 1500);
+        });
+    }
+}
+
+// Utility function for smooth animations
+function animateElement(element, animation, duration = 300) {
+    element.style.animation = `${animation} ${duration}ms ease`;
+    setTimeout(() => {
+        element.style.animation = '';
+    }, duration);
+}

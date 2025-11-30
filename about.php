@@ -716,7 +716,7 @@ require_once 'config/functions.php';
                         </div>
                     </div>
                     <div class="member-info">
-                        <h3 class="member-name">Alex Johnson</h3>
+                        <h3 class="member-name">Patria Nugrahadi</h3>
                         <p class="member-role">Founder & CEO</p>
                         <p class="member-bio">Sneaker enthusiast with 10+ years in the industry. Started StepStyle to share his passion with the world and create the ultimate destination for authentic footwear.</p>
                     </div>
@@ -730,7 +730,7 @@ require_once 'config/functions.php';
                         </div>
                     </div>
                     <div class="member-info">
-                        <h3 class="member-name">Sarah Chen</h3>
+                        <h3 class="member-name">Zahra Olivia</h3>
                         <p class="member-role">Head of Authenticity</p>
                         <p class="member-bio">Expert in sneaker authentication with a keen eye for detail. Sarah ensures every product meets our strict quality standards before reaching our customers.</p>
                     </div>
@@ -744,7 +744,7 @@ require_once 'config/functions.php';
                         </div>
                     </div>
                     <div class="member-info">
-                        <h3 class="member-name">Mike Rodriguez</h3>
+                        <h3 class="member-name">Tessa Marshanda</h3>
                         <p class="member-role">Creative Director</p>
                         <p class="member-bio">Brings style and innovation to our brand. Mike's creative vision ensures we stay ahead of trends while maintaining our unique identity in the market.</p>
                     </div>
@@ -758,7 +758,7 @@ require_once 'config/functions.php';
                         </div>
                     </div>
                     <div class="member-info">
-                        <h3 class="member-name">Emily Davis</h3>
+                        <h3 class="member-name">Desy Angriani</h3>
                         <p class="member-role">Customer Experience Manager</p>
                         <p class="member-bio">Dedicated to ensuring every customer has an exceptional shopping experience. Emily leads our support team with passion and attention to detail.</p>
                     </div>
@@ -772,8 +772,8 @@ require_once 'config/functions.php';
                         </div>
                     </div>
                     <div class="member-info">
-                        <h3 class="member-name">David Kim</h3>
-                        <p class="member-role">Operations Director</p>
+                        <h3 class="member-name">Salma Perbiana</h3>
+                        <p class="member-role">Operations Directors</p>
                         <p class="member-bio">Oversees our logistics and supply chain. David ensures smooth operations from warehouse to delivery, making sure you get your sneakers fast and secure.</p>
                     </div>
                 </div>

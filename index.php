@@ -13,6 +13,18 @@ $body_class = 'home-page';
 require_once 'config/database.php';
 require_once 'config/functions.php';
 
+// Fungsi konversi USD to IDR
+function usdToIdr($usdPrice) {
+    // Anda bisa menggunakan rate tetap atau mengambil dari API
+    $exchangeRate = 15500; // Contoh rate: 1 USD = 15,500 IDR
+    return $usdPrice * $exchangeRate;
+}
+
+// Fungsi format Rupiah
+function formatRupiah($amount) {
+    return 'Rp ' . number_format($amount, 0, ',', '.');
+}
+
 // Get featured products (dummy data untuk contoh)
 $featured_products = [
     [
@@ -498,7 +510,7 @@ $top_brands = [
                 <?php
                 $testimonials = [
                     [
-                        'name' => 'Sarah Johnson',
+                        'name' => 'John Johnson',
                         'role' => 'Sneaker Collector',
                         'text' => 'The quality and authenticity of the sneakers are unmatched. Fast shipping and great customer service!',
                         'rating' => 5

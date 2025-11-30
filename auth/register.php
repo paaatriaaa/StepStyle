@@ -190,6 +190,7 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
             position: absolute;
             left: 12px;
             color: #6b7280;
+            z-index: 2;
         }
         .input-group input {
             width: 100%;
@@ -198,11 +199,23 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
             border-radius: 8px;
             font-size: 1rem;
             transition: all 0.3s ease;
+            background: #ffffff;
+            color: #1f2937;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .input-group input::placeholder {
+            color: #9ca3af;
+            opacity: 1;
         }
         .input-group input:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            background: #ffffff;
+        }
+        .input-group input:hover {
+            border-color: #9ca3af;
+            background: #ffffff;
         }
         .password-toggle {
             position: absolute;
@@ -211,6 +224,7 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
             border: none;
             color: #6b7280;
             cursor: pointer;
+            z-index: 2;
         }
         .password-requirements {
             margin-top: 0.5rem;
@@ -340,6 +354,22 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
             color: #374151;
             font-weight: 500;
         }
+
+        /* Improved input styling for better visibility */
+        .input-group input:not(:placeholder-shown) {
+            background: #ffffff !important;
+            border-color: #d1d5db;
+            color: #1f2937;
+        }
+
+        .input-group input:-webkit-autofill,
+        .input-group input:-webkit-autofill:hover,
+        .input-group input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #1f2937;
+            -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
         @media (max-width: 768px) {
             .auth-layout {
                 grid-template-columns: 1fr;
@@ -409,7 +439,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                                     <i class="fas fa-user input-icon"></i>
                                     <input type="text" id="first_name" name="first_name" 
                                            value="<?php echo $first_name_val; ?>" 
-                                           placeholder="First name" required>
+                                           placeholder="First name" required
+                                           style="background: #ffffff; color: #1f2937;">
                                 </div>
                             </div>
 
@@ -419,7 +450,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                                     <i class="fas fa-user input-icon"></i>
                                     <input type="text" id="last_name" name="last_name" 
                                            value="<?php echo $last_name_val; ?>" 
-                                           placeholder="Last name" required>
+                                           placeholder="Last name" required
+                                           style="background: #ffffff; color: #1f2937;">
                                 </div>
                             </div>
                         </div>
@@ -430,7 +462,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                                 <i class="fas fa-envelope input-icon"></i>
                                 <input type="email" id="email" name="email" 
                                        value="<?php echo $email_val; ?>" 
-                                       placeholder="Enter your email" required>
+                                       placeholder="Enter your email" required
+                                       style="background: #ffffff; color: #1f2937;">
                             </div>
                         </div>
 
@@ -440,7 +473,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                                 <i class="fas fa-phone input-icon"></i>
                                 <input type="tel" id="phone" name="phone" 
                                        value="<?php echo $phone_val; ?>" 
-                                       placeholder="+1 (555) 123-4567">
+                                       placeholder="+1 (555) 123-4567"
+                                       style="background: #ffffff; color: #1f2937;">
                             </div>
                         </div>
 
@@ -450,7 +484,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                                 <i class="fas fa-lock input-icon"></i>
                                 <input type="password" id="password" name="password" 
                                        placeholder="Create a password (min. 6 characters)" 
-                                       minlength="6" required>
+                                       minlength="6" required
+                                       style="background: #ffffff; color: #1f2937;">
                                 <button type="button" class="password-toggle" id="toggle-password">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -465,7 +500,8 @@ $newsletter_checked = isset($_POST['newsletter']) ? 'checked' : 'checked';
                             <div class="input-group">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input type="password" id="confirm_password" name="confirm_password" 
-                                       placeholder="Confirm your password" required>
+                                       placeholder="Confirm your password" required
+                                       style="background: #ffffff; color: #1f2937;">
                             </div>
                         </div>
 
@@ -592,6 +628,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Ensure inputs are always visible
+    const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="password"]');
+    inputs.forEach(input => {
+        // Set explicit background and color
+        input.style.backgroundColor = '#ffffff';
+        input.style.color = '#1f2937';
+        
+        // Ensure visibility on focus
+        input.addEventListener('focus', function() {
+            this.style.backgroundColor = '#ffffff';
+            this.style.color = '#1f2937';
+        });
+        
+        // Ensure visibility when typing
+        input.addEventListener('input', function() {
+            this.style.backgroundColor = '#ffffff';
+            this.style.color = '#1f2937';
+        });
+    });
 
     // Hide loading screen
     const loadingScreen = document.getElementById('global-loading');
